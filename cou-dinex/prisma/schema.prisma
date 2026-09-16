@@ -1,0 +1,701 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ==========================================
+// ENUMS
+// ==========================================
+
+enum Role {
+  STUDENT
+  VISITOR
+  FACULTY
+  STAFF
+  CAFETERIA_STAFF
+  CAFETERIA_ADMIN
+  DELIVERY_AGENT
+  SUPER_ADMIN
+}
+
+enum StudentVerificationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  MORE_INFO_REQUIRED
+}
+
+enum VerificationMethod {
+  ADMIN
+  OFFICIAL_DATABASE
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PREPARING
+  READY_FOR_PICKUP
+  OUT_FOR_DELIVERY
+  DELIVERED
+  CANCELLED
+  REJECTED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+  PARTIALLY_REFUNDED
+}
+
+enum PaymentMethod {
+  BKASH
+  NAGAD
+  ROCKET
+  CASH_ON_DELIVERY
+  WALLET
+}
+
+enum DeliveryType {
+  CAFETERIA_PICKUP
+  TABLE_QR
+  HALL_DELIVERY
+  DEPARTMENT_DELIVERY
+}
+
+enum DeliveryStatus {
+  PENDING
+  ASSIGNED
+  PICKED_UP
+  ON_THE_WAY
+  ARRIVED
+  DELIVERED
+  FAILED
+}
+
+enum GroupOrderStatus {
+  OPEN
+  LOCKED
+  PLACED
+  CANCELLED
+}
+
+enum ComplaintStatus {
+  PENDING
+  IN_REVIEW
+  RESOLVED
+  DISMISSED
+}
+
+enum NotificationType {
+  ORDER_UPDATE
+  DELIVERY_ALERT
+  PROMOTION
+  SYSTEM
+  VERIFICATION
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  LOGIN
+  VERIFY
+  REFUND
+}
+
+enum TokenType {
+  EMAIL_VERIFICATION
+  PASSWORD_RESET
+}
+
+// ==========================================
+// 1. USERS & ACCOUNTS
+// ==========================================
+
+model User {
+  id              String    @id @default(uuid())
+  phone           String    @unique
+  email           String?   @unique
+  fullName        String
+  passwordHash    String?
+  avatarUrl       String?
+  role            Role      @default(STUDENT)
+  isActive        Boolean   @default(true)
+  isEmailVerified Boolean   @default(false)
+  emailVerifiedAt DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // Relationships
+  student             Student?
+  visitor             Visitor?
+  deliveryAgent       DeliveryAgent?
+  orders              Order[]
+  reviews             Review[]
+  complaints          Complaint[]
+  notifications       Notification[]
+  rewards             Reward[]
+  auditLogs           AuditLog[]
+  groupMemberships    GroupMember[]
+  groupOrdersCreated  GroupOrder[]          @relation("GroupOrderCreator")
+  verificationTokens  VerificationToken[]
+
+  @@index([phone])
+  @@index([email])
+  @@index([role])
+  @@map("users")
+}
+
+// ==========================================
+// 1.1 VERIFICATION TOKENS
+// ==========================================
+
+model VerificationToken {
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String    @unique
+  type      TokenType
+  expiresAt DateTime
+  createdAt DateTime  @default(now())
+
+  @@index([token])
+  @@index([userId])
+  @@map("verification_tokens")
+}
+
+// ==========================================
+// 2. STUDENTS (Official DB ready)
+// ==========================================
+
+model Student {
+  id                   String                    @id @default(uuid())
+  userId               String                    @unique
+  user                 User                      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  universityStudentId  String                    @unique
+  batch                String?
+  session              String?
+  departmentId         String
+  department           Department                @relation(fields: [departmentId], references: [id])
+  hallId               String?
+  hall                 Hall?                     @relation(fields: [hallId], references: [id])
+  idCardImageUrl       String?
+  verificationStatus   StudentVerificationStatus @default(PENDING)
+  verificationMethod   VerificationMethod        @default(ADMIN)
+  verifiedAt           DateTime?
+  verifiedBy           String?
+  rejectionReason      String?
+
+  // Extensibility for official university database sync
+  isSyncedWithOfficialDb Boolean                 @default(false)
+  officialDbSyncId       String?
+  lastSyncedAt           DateTime?
+  officialDbRawData      Json?
+
+  classSchedules       ClassSchedule[]
+  createdAt            DateTime                  @default(now())
+  updatedAt            DateTime                  @updatedAt
+
+  @@index([universityStudentId])
+  @@index([verificationStatus])
+  @@index([departmentId])
+  @@index([hallId])
+  @@map("students")
+}
+
+// ==========================================
+// 3. VISITORS
+// ==========================================
+
+model Visitor {
+  id            String   @id @default(uuid())
+  userId        String   @unique
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  purpose       String?
+  organization  String?
+  nidOrPassport String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("visitors")
+}
+
+// ==========================================
+// 4. DEPARTMENTS
+// ==========================================
+
+model Department {
+  id                String             @id @default(uuid())
+  name              String
+  code              String             @unique // e.g. CSE, ICT, ECO
+  faculty           String?
+  building          String?
+  students          Student[]
+  deliveryLocations DeliveryLocation[]
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  @@map("departments")
+}
+
+// ==========================================
+// 5. HALLS (Residential)
+// ==========================================
+
+model Hall {
+  id                String             @id @default(uuid())
+  name              String
+  code              String             @unique // e.g. KNH, BSMRH, SDDH, NFCH, SHH
+  type              String?            // MALE, FEMALE
+  students          Student[]
+  deliveryLocations DeliveryLocation[]
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  @@map("halls")
+}
+
+// ==========================================
+// 6. CAFETERIAS
+// ==========================================
+
+model Cafeteria {
+  id             String         @id @default(uuid())
+  name           String
+  slug           String         @unique
+  location       String
+  isOpen         Boolean        @default(true)
+  openingTime    String?        // e.g. "08:00 AM"
+  closingTime    String?        // e.g. "09:00 PM"
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  tables         DiningTable[]
+  menuCategories MenuCategory[]
+  menuItems      MenuItem[]
+  orders         Order[]
+  inventory      Inventory[]
+
+  @@map("cafeterias")
+}
+
+// ==========================================
+// 7. TABLES (Dining / Table QR)
+// ==========================================
+
+model DiningTable {
+  id          String    @id @default(uuid())
+  cafeteriaId String
+  cafeteria   Cafeteria @relation(fields: [cafeteriaId], references: [id], onDelete: Cascade)
+  tableNumber String
+  qrCode      String    @unique
+  capacity    Int       @default(4)
+  isOccupied  Boolean   @default(false)
+  orders      Order[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([cafeteriaId, tableNumber])
+  @@map("tables")
+}
+
+// ==========================================
+// 8. MENU CATEGORIES
+// ==========================================
+
+model MenuCategory {
+  id           String     @id @default(uuid())
+  cafeteriaId  String
+  cafeteria    Cafeteria  @relation(fields: [cafeteriaId], references: [id], onDelete: Cascade)
+  name         String
+  slug         String
+  displayOrder Int        @default(0)
+  isActive     Boolean    @default(true)
+  items        MenuItem[]
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@unique([cafeteriaId, slug])
+  @@map("menu_categories")
+}
+
+// ==========================================
+// 9. MENU ITEMS
+// ==========================================
+
+model MenuItem {
+  id                     String        @id @default(uuid())
+  cafeteriaId            String
+  cafeteria              Cafeteria     @relation(fields: [cafeteriaId], references: [id], onDelete: Cascade)
+  categoryId             String
+  category               MenuCategory  @relation(fields: [categoryId], references: [id])
+  name                   String
+  description            String?
+  price                  Decimal       @db.Decimal(10, 2)
+  discountPrice          Decimal?      @db.Decimal(10, 2)
+  imageUrl               String?
+  isAvailable            Boolean       @default(true)
+  isDailySpecial         Boolean       @default(false)
+  preparationTimeMinutes Int           @default(15)
+  tags                   String[]      @default([])
+  createdAt              DateTime      @default(now())
+  updatedAt              DateTime      @updatedAt
+
+  inventory              Inventory?
+  orderItems             OrderItem[]
+  reviews                Review[]
+
+  @@index([cafeteriaId])
+  @@index([categoryId])
+  @@index([isAvailable])
+  @@map("menu_items")
+}
+
+// ==========================================
+// 10. INVENTORY
+// ==========================================
+
+model Inventory {
+  id                 String    @id @default(uuid())
+  cafeteriaId        String
+  cafeteria          Cafeteria @relation(fields: [cafeteriaId], references: [id], onDelete: Cascade)
+  menuItemId         String    @unique
+  menuItem           MenuItem  @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+  currentStock       Int       @default(0)
+  dailyStartingStock Int       @default(0)
+  lowStockThreshold  Int       @default(5)
+  isSoldOut          Boolean   @default(false)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  @@map("inventory")
+}
+
+// ==========================================
+// 11. ORDERS
+// ==========================================
+
+model Order {
+  id                 String            @id @default(uuid())
+  orderNumber        String            @unique
+  userId             String
+  user               User              @relation(fields: [userId], references: [id])
+  cafeteriaId        String
+  cafeteria          Cafeteria         @relation(fields: [cafeteriaId], references: [id])
+  deliveryType       DeliveryType
+  status             OrderStatus       @default(PENDING)
+  subtotal           Decimal           @db.Decimal(10, 2)
+  deliveryFee        Decimal           @default(0.00) @db.Decimal(10, 2)
+  discount           Decimal           @default(0.00) @db.Decimal(10, 2)
+  totalAmount        Decimal           @db.Decimal(10, 2)
+  notes              String?
+
+  tableId            String?
+  table              DiningTable?      @relation(fields: [tableId], references: [id])
+  deliveryLocationId String?
+  deliveryLocation   DeliveryLocation? @relation(fields: [deliveryLocationId], references: [id])
+  groupOrderId       String?
+  groupOrder         GroupOrder?       @relation(fields: [groupOrderId], references: [id])
+
+  orderItems         OrderItem[]
+  payment            Payment?
+  deliveryTracking   DeliveryTracking?
+  reviews            Review[]
+  complaints         Complaint[]
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  @@index([userId])
+  @@index([status])
+  @@index([orderNumber])
+  @@index([createdAt])
+  @@map("orders")
+}
+
+// ==========================================
+// 12. ORDER ITEMS
+// ==========================================
+
+model OrderItem {
+  id                  String   @id @default(uuid())
+  orderId             String
+  order               Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  menuItemId          String
+  menuItem            MenuItem @relation(fields: [menuItemId], references: [id])
+  quantity            Int
+  unitPrice           Decimal  @db.Decimal(10, 2)
+  totalPrice          Decimal  @db.Decimal(10, 2)
+  specialInstructions String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@index([orderId])
+  @@index([menuItemId])
+  @@map("order_items")
+}
+
+// ==========================================
+// 13. PAYMENTS
+// ==========================================
+
+model Payment {
+  id                 String        @id @default(uuid())
+  orderId            String        @unique
+  order              Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  amount             Decimal       @db.Decimal(10, 2)
+  method             PaymentMethod
+  status             PaymentStatus @default(PENDING)
+  transactionId      String?       @unique
+  gatewayRef         String?
+  paidAt             DateTime?
+  rawGatewayResponse Json?
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+
+  @@index([status])
+  @@index([transactionId])
+  @@map("payments")
+}
+
+// ==========================================
+// 14. DELIVERY LOCATIONS
+// ==========================================
+
+model DeliveryLocation {
+  id           String      @id @default(uuid())
+  name         String
+  departmentId String?
+  department   Department? @relation(fields: [departmentId], references: [id])
+  hallId       String?
+  hall         Hall?       @relation(fields: [hallId], references: [id])
+  roomNumber   String?
+  landmark     String?
+  latitude     Float?
+  longitude    Float?
+  orders       Order[]
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  @@map("delivery_locations")
+}
+
+// ==========================================
+// 15. DELIVERY AGENTS
+// ==========================================
+
+model DeliveryAgent {
+  id               String             @id @default(uuid())
+  userId           String             @unique
+  user             User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  vehicleType      String?            // Bicycle, Motorbike, Walking
+  licenseNumber    String?
+  isAvailable      Boolean            @default(true)
+  currentLatitude  Float?
+  currentLongitude Float?
+  trackings        DeliveryTracking[]
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+
+  @@map("delivery_agents")
+}
+
+// ==========================================
+// 16. DELIVERY TRACKING
+// ==========================================
+
+model DeliveryTracking {
+  id                    String         @id @default(uuid())
+  orderId               String         @unique
+  order                 Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  agentId               String?
+  agent                 DeliveryAgent? @relation(fields: [agentId], references: [id])
+  status                DeliveryStatus @default(PENDING)
+  pickupTime            DateTime?
+  estimatedDeliveryTime DateTime?
+  actualDeliveryTime    DateTime?
+  currentLatitude       Float?
+  currentLongitude      Float?
+  trackingLogs          Json?          // Array of { lat, lng, timestamp }
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+
+  @@index([orderId])
+  @@index([agentId])
+  @@index([status])
+  @@map("delivery_tracking")
+}
+
+// ==========================================
+// 17. NOTIFICATIONS
+// ==========================================
+
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      NotificationType
+  title     String
+  body      String
+  isRead    Boolean          @default(false)
+  actionUrl String?
+  metadata  Json?
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  @@index([userId, isRead])
+  @@map("notifications")
+}
+
+// ==========================================
+// 18. REVIEWS
+// ==========================================
+
+model Review {
+  id         String    @id @default(uuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orderId    String?
+  order      Order?    @relation(fields: [orderId], references: [id])
+  menuItemId String?
+  menuItem   MenuItem? @relation(fields: [menuItemId], references: [id])
+  rating     Int       // 1-5
+  comment    String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@index([menuItemId])
+  @@index([userId])
+  @@map("reviews")
+}
+
+// ==========================================
+// 19. COMPLAINTS
+// ==========================================
+
+model Complaint {
+  id             String          @id @default(uuid())
+  userId         String
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orderId        String?
+  order          Order?          @relation(fields: [orderId], references: [id])
+  subject        String
+  description    String
+  status         ComplaintStatus @default(PENDING)
+  resolutionNote String?
+  resolvedAt     DateTime?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  @@index([status])
+  @@index([userId])
+  @@map("complaints")
+}
+
+// ==========================================
+// 20. REWARDS
+// ==========================================
+
+model Reward {
+  id         String    @id @default(uuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  points     Int       @default(0)
+  reason     String
+  expiryDate DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@index([userId])
+  @@map("rewards")
+}
+
+// ==========================================
+// 21. GROUP ORDERS
+// ==========================================
+
+model GroupOrder {
+  id        String           @id @default(uuid())
+  title     String
+  shareCode String           @unique
+  creatorId String
+  creator   User             @relation("GroupOrderCreator", fields: [creatorId], references: [id])
+  status    GroupOrderStatus @default(OPEN)
+  expiresAt DateTime?
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  members   GroupMember[]
+  orders    Order[]
+
+  @@index([shareCode])
+  @@map("group_orders")
+}
+
+// ==========================================
+// 22. GROUP MEMBERS
+// ==========================================
+
+model GroupMember {
+  id           String     @id @default(uuid())
+  groupOrderId String
+  groupOrder   GroupOrder @relation(fields: [groupOrderId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  hasPaid      Boolean    @default(false)
+  amountShare  Decimal?   @db.Decimal(10, 2)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@unique([groupOrderId, userId])
+  @@map("group_members")
+}
+
+// ==========================================
+// 23. CLASS SCHEDULES
+// ==========================================
+
+model ClassSchedule {
+  id         String   @id @default(uuid())
+  studentId  String
+  student    Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  courseCode String
+  courseName String
+  dayOfWeek  String   // Sunday, Monday, etc.
+  startTime  String   // e.g. "10:00"
+  endTime    String   // e.g. "11:30"
+  classroom  String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([studentId])
+  @@map("class_schedules")
+}
+
+// ==========================================
+// 24. AUDIT LOGS
+// ==========================================
+
+model AuditLog {
+  id         String      @id @default(uuid())
+  userId     String?
+  user       User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action     AuditAction
+  entityName String
+  entityId   String?
+  oldValues  Json?
+  newValues  Json?
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime    @default(now())
+
+  @@index([entityName, entityId])
+  @@index([userId])
+  @@index([action])
+  @@map("audit_logs")
+}
