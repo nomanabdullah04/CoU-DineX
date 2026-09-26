@@ -68,7 +68,14 @@ export async function getCurrentUser(): Promise<AuthSessionPayload | null> {
   return verifySessionToken(token);
 }
 
-export async function getSessionUser(_req?: any): Promise<AuthSessionPayload | null> {
+export async function getSessionUser(req?: any): Promise<AuthSessionPayload | null> {
+  if (req && typeof req.cookies?.get === "function") {
+    const token = req.cookies.get(AUTH_COOKIE_NAME)?.value;
+    if (token) {
+      const payload = await verifySessionToken(token);
+      if (payload) return payload;
+    }
+  }
   return getCurrentUser();
 }
 

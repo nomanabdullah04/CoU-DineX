@@ -23,10 +23,13 @@ import {
   Calendar,
   DollarSign,
   Info,
-  Search,
   Receipt,
+  CreditCard,
+  Search,
 } from "lucide-react";
 import { getItemImageUrl } from "@/lib/foodImages";
+import { DemoPaymentModal } from "@/components/payment/DemoPaymentModal";
+import { PaymentMethod } from "@/lib/payment/types";
 
 interface TimelineStep {
   key: string;
@@ -34,6 +37,7 @@ interface TimelineStep {
   description: string;
   timestamp: string | null;
   completed: boolean;
+  estimated?: boolean;
 }
 
 interface OrderTrackingData {
@@ -107,6 +111,7 @@ export default function OrderTrackingPage() {
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
   const [cancelFeedback, setCancelFeedback] = useState<string | null>(null);
   const [reorderSuccess, setReorderSuccess] = useState(false);
+  const [payModalOpen, setPayModalOpen] = useState(false);
 
   async function fetchOrder() {
     if (!orderId) return;
@@ -467,6 +472,75 @@ export default function OrderTrackingPage() {
         </div>
       )}
 
+      {/* Unpaid / Payment Pending Banner */}
+      {!isCancelled && order.payment && order.payment.status !== "PAID" && (
+        <div
+          style={{
+            background: "linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%)",
+            border: "1px solid #F59E0B",
+            borderRadius: 18,
+            padding: "16px 20px",
+            color: "#92400E",
+            marginBottom: 24,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            flexWrap: "wrap",
+            gap: 14,
+            boxShadow: "0 4px 12px rgba(245, 158, 11, 0.15)",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <div
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: 10,
+                background: "#F59E0B",
+                color: "#FFFFFF",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
+              }}
+            >
+              <CreditCard size={20} />
+            </div>
+            <div>
+              <strong style={{ fontSize: 14, display: "block" }}>Payment Status: {order.payment.status}</strong>
+              <p style={{ margin: "2px 0 0 0", fontSize: 13, opacity: 0.9 }}>
+                {order.payment.method === "CASH_ON_DELIVERY"
+                  ? "Pay cash directly to cafeteria staff or delivery rider upon receiving your meal."
+                  : "Complete your simulated demo payment with bKash, Nagad, Rocket, or Card."}
+              </p>
+            </div>
+          </div>
+
+          {order.payment.method !== "CASH_ON_DELIVERY" && (
+            <button
+              onClick={() => setPayModalOpen(true)}
+              style={{
+                padding: "9px 18px",
+                borderRadius: 10,
+                background: "#0F766E",
+                color: "#FFFFFF",
+                fontSize: 13,
+                fontWeight: 800,
+                border: "none",
+                cursor: "pointer",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                boxShadow: "0 2px 8px rgba(15, 118, 110, 0.25)",
+              }}
+            >
+              <span>Pay Now (৳{order.totalAmount})</span>
+              <ArrowRight size={14} />
+            </button>
+          )}
+        </div>
+      )}
+
       {/* VISUAL STATUS TIMELINE WITH REAL TIMESTAMPS */}
       {!isCancelled && (
         <div
@@ -556,13 +630,25 @@ export default function OrderTrackingPage() {
                     style={{
                       fontSize: 11,
                       fontWeight: 700,
-                      color: step.timestamp ? "var(--primary)" : "var(--txt-muted)",
-                      padding: "2px 6px",
+                      color: step.completed
+                        ? "var(--primary)"
+                        : step.estimated
+                        ? "#0F766E"
+                        : "var(--txt-muted)",
+                      padding: "3px 8px",
                       borderRadius: 6,
-                      background: step.timestamp ? "var(--primary-light)" : "transparent",
+                      background: step.completed
+                        ? "var(--primary-light)"
+                        : step.estimated
+                        ? "rgba(15, 118, 110, 0.08)"
+                        : "transparent",
+                      border: step.estimated ? "1px dashed rgba(15, 118, 110, 0.35)" : "none",
+                      whiteSpace: "nowrap",
                     }}
                   >
-                    {step.timestamp ? formatTimestamp(step.timestamp) : "—"}
+                    {step.timestamp
+                      ? (step.estimated ? `Est. ${formatTimestamp(step.timestamp)}` : formatTimestamp(step.timestamp))
+                      : "—"}
                   </span>
                 </div>
               );
@@ -795,6 +881,26 @@ export default function OrderTrackingPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Interactive Demo Payment Modal for Paying Pending Order */}
+      {payModalOpen && order && order.payment && (
+        <DemoPaymentModal
+          isOpen={payModalOpen}
+          orderId={order.id}
+          orderNumber={order.orderNumber}
+          amount={order.totalAmount}
+          method={
+            Object.values(PaymentMethod).includes(order.payment.method as PaymentMethod)
+              ? (order.payment.method as PaymentMethod)
+              : PaymentMethod.BKASH
+          }
+          onSuccess={(_receiptUrl) => {
+            setPayModalOpen(false);
+            fetchOrder();
+          }}
+          onCancel={() => setPayModalOpen(false)}
+        />
       )}
     </div>
   );

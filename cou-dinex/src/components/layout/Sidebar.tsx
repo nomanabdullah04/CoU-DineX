@@ -1,13 +1,13 @@
-﻿"use client";
+"use client";
 
 import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Home, Compass, ShoppingBag, Map, Gift, User,
-  Settings, ChevronRight, UtensilsCrossed,
+  Settings, ChevronRight,
 } from "lucide-react";
-import { APP_NAME } from "@/lib/constants";
+import { Logo } from "@/components/ui/Logo";
 
 const NAV_ITEMS = [
   { label: "Home",       href: "/home",    icon: Home        },
@@ -26,25 +26,12 @@ export function Sidebar() {
 
       {/* Logo */}
       <div style={{
-        display: "flex", alignItems: "center", gap: 12,
-        padding: "18px 20px",
+        padding: "16px 20px",
         borderBottom: "1px solid var(--border)",
+        display: "flex",
+        alignItems: "center",
       }}>
-        <div className="dinex-gradient-primary" style={{
-          width: 40, height: 40, borderRadius: 12,
-          display: "flex", alignItems: "center", justifyContent: "center",
-          flexShrink: 0,
-        }}>
-          <UtensilsCrossed size={20} color="white" />
-        </div>
-        <div>
-          <div style={{ fontWeight: 900, fontSize: 17, color: "var(--txt)", letterSpacing: "-0.02em", lineHeight: 1 }}>
-            {APP_NAME}
-          </div>
-          <div style={{ fontSize: 10, color: "var(--txt-muted)", fontWeight: 500, marginTop: 3, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-            Comilla University
-          </div>
-        </div>
+        <Logo size="md" showSubtitle={true} href="/home" />
       </div>
 
       {/* Navigation */}

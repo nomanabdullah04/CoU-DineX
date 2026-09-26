@@ -15,8 +15,8 @@ import {
   Users,
   Search,
   ChefHat,
-  UtensilsCrossed,
 } from "lucide-react";
+import { Logo } from "@/components/ui/Logo";
 
 interface VerificationCounts {
   all: number;
@@ -107,43 +107,24 @@ export default function AdminDashboardPage() {
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-          <div
-            style={{
-              width: 40,
-              height: 40,
-              borderRadius: 12,
-              background: "#CCFBF1",
-              color: "#0F766E",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <UtensilsCrossed size={18} />
-          </div>
-          <div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ fontSize: 18, fontWeight: 800, color: "#0F172A" }}>
-                CoU <span style={{ color: "#0F766E" }}>Dine</span>
-                <span style={{ color: "#F59E0B" }}>X</span>
-              </span>
-              <span
-                style={{
-                  padding: "2px 8px",
-                  borderRadius: 6,
-                  background: "#0F766E",
-                  color: "#FFFFFF",
-                  fontSize: 11,
-                  fontWeight: 700,
-                  letterSpacing: "0.5px",
-                }}
-              >
-                ADMIN
-              </span>
-            </div>
-            <p style={{ fontSize: 12, color: "#64748B", margin: 0 }}>
-              Campus Dining Administration & Student Verification OS
-            </p>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <Logo size="sm" />
+            <span
+              style={{
+                padding: "2px 8px",
+                borderRadius: 6,
+                background: "#0F766E",
+                color: "#FFFFFF",
+                fontSize: 11,
+                fontWeight: 700,
+                letterSpacing: "0.5px",
+              }}
+            >
+              ADMIN
+            </span>
+            <span style={{ fontSize: 12, color: "#64748B", margin: 0 }}>
+              • Campus Dining Administration & Student Verification OS
+            </span>
           </div>
         </div>
 

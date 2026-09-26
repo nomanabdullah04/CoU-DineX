@@ -2,13 +2,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
 import {
-  UtensilsCrossed, Star, ArrowRight,
+  Star, ArrowRight,
   Zap, CheckCircle, Clock, MapPin,
   Smartphone, Shield, ChevronRight,
   Building2, QrCode, Award, ShieldCheck,
   ShoppingBag, Search, Users, Send,
 } from "lucide-react";
 import { getItemImageUrl } from "@/lib/foodImages";
+import { Logo } from "@/components/ui/Logo";
 
 export const metadata: Metadata = {
   title: "CoU DineX — Smart University Cafeteria | Your Campus. Your Food. Your Time.",
@@ -91,31 +92,7 @@ export default function LandingPage() {
           }}
         >
           {/* Brand */}
-          <Link href="/" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none" }}>
-            <div
-              className="dinex-gradient-primary"
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: 11,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                boxShadow: "var(--shadow-primary)",
-                flexShrink: 0,
-              }}
-            >
-              <UtensilsCrossed size={18} color="white" />
-            </div>
-            <div>
-              <div style={{ fontWeight: 900, fontSize: 18, color: "var(--txt)", letterSpacing: "-0.02em", lineHeight: 1 }}>
-                CoU DineX
-              </div>
-              <div style={{ fontSize: 10, color: "var(--txt-muted)", fontWeight: 500, marginTop: 1 }}>
-                Comilla University
-              </div>
-            </div>
-          </Link>
+          <Logo size="sm" showSubtitle={true} href="/" />
 
           {/* Nav links (desktop) */}
           <nav style={{ display: "flex", gap: 24, alignItems: "center" }} className="hidden md:flex">
@@ -640,18 +617,7 @@ export default function LandingPage() {
             className="md:flex-row md:justify-between"
           >
             {/* Brand */}
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <div
-                className="dinex-gradient-primary"
-                style={{ width: 32, height: 32, borderRadius: 9, display: "flex", alignItems: "center", justifyContent: "center" }}
-              >
-                <UtensilsCrossed size={14} color="white" />
-              </div>
-              <div>
-                <span style={{ fontWeight: 900, fontSize: 15, color: "var(--txt)" }}>CoU DineX</span>
-                <span style={{ fontSize: 12, color: "var(--txt-muted)", marginLeft: 8 }}>Comilla University</span>
-              </div>
-            </div>
+            <Logo size="xs" showSubtitle={true} href="/" />
 
             {/* Links */}
             <nav style={{ display: "flex", gap: 20 }}>

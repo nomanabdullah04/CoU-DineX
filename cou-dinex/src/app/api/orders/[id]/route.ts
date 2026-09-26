@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getCurrentUser } from "@/lib/auth";
+import { getSessionUser } from "@/lib/auth";
 
 type Props = { params: Promise<{ id: string }> };
 
-export async function GET(_req: NextRequest, { params }: Props) {
+export async function GET(req: NextRequest, { params }: Props) {
   try {
-    const user = await getCurrentUser();
+    const user = await getSessionUser(req);
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -87,6 +87,30 @@ export async function GET(_req: NextRequest, { params }: Props) {
 
     const isDelivery = order.deliveryType === "HALL_DELIVERY" || order.deliveryType === "DEPARTMENT_DELIVERY";
 
+    // Calculate estimated preparation & delivery duration based on menu items
+    const prepMinutesList = order.orderItems.map((item) => item.menuItem?.preparationTimeMinutes || 15);
+    const maxPrepMinutes = prepMinutesList.length > 0 ? Math.max(...prepMinutesList) : 15;
+    const createdAtMs = new Date(order.createdAt).getTime();
+
+    // Helper to format ISO strings for fallbacks
+    const confirmedTimeMs = createdAtMs + 2 * 60 * 1000;
+    const preparingTimeMs = createdAtMs + 5 * 60 * 1000;
+    const readyTimeMs = createdAtMs + maxPrepMinutes * 60 * 1000;
+    const outTimeMs = readyTimeMs + 5 * 60 * 1000;
+    const deliveryTimeMs = readyTimeMs + (isDelivery ? 20 : 5) * 60 * 1000;
+
+    const confirmedLog = getTimestampForEvent("CONFIRMED");
+    const preparingLog = getTimestampForEvent("PREPARING");
+    const readyLog = getTimestampForEvent("READY");
+    const outLog = getTimestampForEvent("OUT_FOR_DELIVERY");
+    const deliveredLog = getTimestampForEvent("DELIVERED");
+
+    const isConfirmedOrLater = ["CONFIRMED", "PREPARING", "READY_FOR_PICKUP", "OUT_FOR_DELIVERY", "DELIVERED"].includes(order.status);
+    const isPreparingOrLater = ["PREPARING", "READY_FOR_PICKUP", "OUT_FOR_DELIVERY", "DELIVERED"].includes(order.status);
+    const isReadyOrLater = ["READY_FOR_PICKUP", "OUT_FOR_DELIVERY", "DELIVERED"].includes(order.status);
+    const isOutOrLater = ["OUT_FOR_DELIVERY", "DELIVERED"].includes(order.status);
+    const isDelivered = order.status === "DELIVERED";
+
     // Build timeline stages matching SRS & Phase 8 lifecycle
     const timeline = [
       {
@@ -95,27 +119,31 @@ export async function GET(_req: NextRequest, { params }: Props) {
         description: "Received by cafeteria counter",
         timestamp: order.createdAt.toISOString(),
         completed: true,
+        estimated: false,
       },
       {
         key: "CONFIRMED",
         label: "Confirmed",
         description: "Kitchen verified ticket",
-        timestamp: getTimestampForEvent("CONFIRMED") || (order.status !== "PENDING" && order.status !== "CANCELLED" ? order.updatedAt.toISOString() : null),
-        completed: ["CONFIRMED", "PREPARING", "READY_FOR_PICKUP", "OUT_FOR_DELIVERY", "DELIVERED"].includes(order.status),
+        timestamp: confirmedLog || (isConfirmedOrLater ? (order.status === "CONFIRMED" ? order.updatedAt.toISOString() : new Date(confirmedTimeMs).toISOString()) : new Date(confirmedTimeMs).toISOString()),
+        completed: isConfirmedOrLater,
+        estimated: !isConfirmedOrLater && !confirmedLog,
       },
       {
         key: "PREPARING",
         label: "Preparing",
         description: "Chef is cooking your food",
-        timestamp: getTimestampForEvent("PREPARING"),
-        completed: ["PREPARING", "READY_FOR_PICKUP", "OUT_FOR_DELIVERY", "DELIVERED"].includes(order.status),
+        timestamp: preparingLog || (isPreparingOrLater ? (order.status === "PREPARING" ? order.updatedAt.toISOString() : new Date(preparingTimeMs).toISOString()) : new Date(preparingTimeMs).toISOString()),
+        completed: isPreparingOrLater,
+        estimated: !isPreparingOrLater && !preparingLog,
       },
       {
         key: "READY_FOR_PICKUP",
         label: "Ready",
         description: isDelivery ? "Packaged for delivery" : "Ready at cafeteria counter",
-        timestamp: getTimestampForEvent("READY"),
-        completed: ["READY_FOR_PICKUP", "OUT_FOR_DELIVERY", "DELIVERED"].includes(order.status),
+        timestamp: readyLog || (isReadyOrLater ? (order.status === "READY_FOR_PICKUP" ? order.updatedAt.toISOString() : new Date(readyTimeMs).toISOString()) : new Date(readyTimeMs).toISOString()),
+        completed: isReadyOrLater,
+        estimated: !isReadyOrLater && !readyLog,
       },
       ...(isDelivery
         ? [
@@ -123,8 +151,9 @@ export async function GET(_req: NextRequest, { params }: Props) {
               key: "OUT_FOR_DELIVERY",
               label: "Out for Delivery",
               description: "Rider on the way to your destination",
-              timestamp: getTimestampForEvent("OUT_FOR_DELIVERY"),
-              completed: ["OUT_FOR_DELIVERY", "DELIVERED"].includes(order.status),
+              timestamp: outLog || (isOutOrLater ? (order.status === "OUT_FOR_DELIVERY" ? order.updatedAt.toISOString() : new Date(outTimeMs).toISOString()) : new Date(outTimeMs).toISOString()),
+              completed: isOutOrLater,
+              estimated: !isOutOrLater && !outLog,
             },
           ]
         : []),
@@ -132,8 +161,9 @@ export async function GET(_req: NextRequest, { params }: Props) {
         key: "DELIVERED",
         label: isDelivery ? "Delivered" : "Order Picked Up",
         description: isDelivery ? "Handed over at destination" : "Picked up from cafeteria",
-        timestamp: getTimestampForEvent("DELIVERED") || (order.status === "DELIVERED" ? order.updatedAt.toISOString() : null),
-        completed: order.status === "DELIVERED",
+        timestamp: deliveredLog || (isDelivered ? order.updatedAt.toISOString() : (order.deliveryTracking?.estimatedDeliveryTime ? new Date(order.deliveryTracking.estimatedDeliveryTime).toISOString() : new Date(deliveryTimeMs).toISOString())),
+        completed: isDelivered,
+        estimated: !isDelivered && !deliveredLog,
       },
     ];
 

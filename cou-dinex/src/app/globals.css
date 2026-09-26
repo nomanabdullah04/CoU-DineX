@@ -522,6 +522,76 @@ a:hover {
   }
 }
 
+/* ============================================================
+   CoU DineX — Official Brand Identity & Logo Styles
+   Matches the pristine login & SRS branding
+   ============================================================ */
+.cou-dinex-logo-badge {
+  background: #CCFBF1;
+  box-shadow: 0 4px 12px rgba(15, 118, 110, 0.15);
+  border: 1px solid rgba(15, 118, 110, 0.12);
+}
+
+.cou-dinex-logo-icon {
+  color: #0F766E;
+}
+
+.cou-dinex-logo-cou {
+  color: #0F172A;
+}
+
+.cou-dinex-logo-dine {
+  color: #0F766E;
+}
+
+.cou-dinex-logo-x {
+  color: #F59E0B;
+}
+
+.cou-dinex-logo-subtitle {
+  color: #64748B;
+}
+
+/* Dark mode adjustments for high-contrast elegance */
+.dark .cou-dinex-logo-badge {
+  background: #115E59;
+  box-shadow: 0 4px 14px rgba(45, 212, 191, 0.22);
+  border: 1px solid rgba(45, 212, 191, 0.25);
+}
+
+.dark .cou-dinex-logo-icon {
+  color: #5EEAD4;
+}
+
+.dark .cou-dinex-logo-cou {
+  color: #F8FAFC;
+}
+
+.dark .cou-dinex-logo-dine {
+  color: #2DD4BF;
+}
+
+.dark .cou-dinex-logo-x {
+  color: #FBBF24;
+}
+
+.dark .cou-dinex-logo-subtitle {
+  color: #94A3B8;
+}
+
+/* Mobile brand group in Header — strictly hidden on desktop */
+.header-mobile-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+@media (min-width: 1024px) {
+  .header-mobile-brand {
+    display: none !important;
+  }
+}
+
 /* Container */
 .dinex-container {
   width: 100%;

@@ -38,6 +38,7 @@ export function AppShell({
             title={title}
             cartItemCount={effectiveCartCount}
             notificationCount={notificationCount}
+            showDesktopBrand={!showNav}
           />
         )}
 

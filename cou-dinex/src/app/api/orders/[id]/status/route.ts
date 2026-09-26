@@ -112,16 +112,20 @@ export async function PATCH(req: NextRequest, { params }: Props) {
       if (targetStatus === OrderStatus.OUT_FOR_DELIVERY) deliveryStatusUpdate = DeliveryStatus.ON_THE_WAY;
       if (targetStatus === OrderStatus.DELIVERED) deliveryStatusUpdate = DeliveryStatus.DELIVERED;
 
-      if (order.deliveryTracking) {
-        await tx.deliveryTracking.update({
-          where: { orderId: id },
-          data: {
-            status: deliveryStatusUpdate || order.deliveryTracking.status,
-            actualDeliveryTime: targetStatus === OrderStatus.DELIVERED ? new Date() : undefined,
-            trackingLogs: [...currentLogs, transitionLog],
-          },
-        });
-      }
+      await tx.deliveryTracking.upsert({
+        where: { orderId: id },
+        create: {
+          orderId: id,
+          status: deliveryStatusUpdate || DeliveryStatus.PENDING,
+          actualDeliveryTime: targetStatus === OrderStatus.DELIVERED ? new Date() : undefined,
+          trackingLogs: [transitionLog],
+        },
+        update: {
+          status: deliveryStatusUpdate || order.deliveryTracking?.status || DeliveryStatus.PENDING,
+          actualDeliveryTime: targetStatus === OrderStatus.DELIVERED ? new Date() : undefined,
+          trackingLogs: [...currentLogs, transitionLog],
+        },
+      });
 
       // 2.4 Notify student of status update
       const statusTitleMap: Record<string, string> = {

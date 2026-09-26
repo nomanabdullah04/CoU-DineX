@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getCurrentUser } from "@/lib/auth";
+import { getSessionUser } from "@/lib/auth";
 import { DeliveryType, PaymentMethod, PaymentStatus, OrderStatus, NotificationType } from "@prisma/client";
+import { sendNotification } from "@/lib/notifications/notification-service";
 
 interface OrderItemInput {
   menuItemId: string;
@@ -31,7 +32,7 @@ function generateOrderNumber(): string {
 
 export async function POST(req: NextRequest) {
   try {
-    const user = await getCurrentUser();
+    const user = await getSessionUser(req);
     if (!user) {
       return NextResponse.json({ error: "Unauthorized. Please log in to place an order." }, { status: 401 });
     }
@@ -283,34 +284,28 @@ export async function POST(req: NextRequest) {
         },
       });
 
-      // 5.3 Create OrderItems and Deduct Inventory
+      // 5.3 Create OrderItems in Bulk (Fast single query, prevents transaction timeout)
+      await tx.orderItem.createMany({
+        data: validatedOrderItems.map((item) => ({
+          orderId: order.id,
+          menuItemId: item.menuItemId,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          totalPrice: item.totalPrice,
+          specialInstructions: item.specialInstructions,
+        })),
+      });
+
+      // Deduct inventory atomically
       for (const item of validatedOrderItems) {
-        await tx.orderItem.create({
+        await tx.inventory.updateMany({
+          where: { menuItemId: item.menuItemId },
           data: {
-            orderId: order.id,
-            menuItemId: item.menuItemId,
-            quantity: item.quantity,
-            unitPrice: item.unitPrice,
-            totalPrice: item.totalPrice,
-            specialInstructions: item.specialInstructions,
+            currentStock: {
+              decrement: item.quantity,
+            },
           },
         });
-
-        // Deduct inventory
-        const inv = await tx.inventory.findUnique({
-          where: { menuItemId: item.menuItemId },
-        });
-
-        if (inv) {
-          const nextStock = Math.max(0, inv.currentStock - item.quantity);
-          await tx.inventory.update({
-            where: { id: inv.id },
-            data: {
-              currentStock: nextStock,
-              isSoldOut: nextStock === 0,
-            },
-          });
-        }
       }
 
       // 5.4 Create Payment record according to selected method
@@ -350,22 +345,29 @@ export async function POST(req: NextRequest) {
         });
       }
 
-      // 5.6 Create in-app Notification for student
-      await tx.notification.create({
-        data: {
-          userId: user.userId,
-          type: NotificationType.ORDER_CONFIRMED,
-          title: "Order Confirmed!",
-          body: `Your order #${orderNumber} for ৳${calculatedTotalAmount.toFixed(0)} has been placed at ${cafeteria.name}. Payment method: ${selectedMethod}${isDemo ? " (Demo Payment)" : ""}.`,
-          actionUrl: `/orders/${order.id}`,
-        },
-      });
-
       return {
         order,
         payment: createdPayment,
+        selectedMethod,
+        isDemo,
       };
+    }, {
+      maxWait: 15000,
+      timeout: 30000,
     });
+
+    // 6. Send in-app notification & FCM push after transaction commits
+    try {
+      await sendNotification({
+        userId: user.userId,
+        type: NotificationType.ORDER_CONFIRMED,
+        title: "Order Confirmed!",
+        body: `Your order #${result.order.orderNumber} for ৳${calculatedTotalAmount.toFixed(0)} has been placed at ${cafeteria.name}. Payment method: ${result.selectedMethod}${result.isDemo ? " (Demo Payment)" : ""}.`,
+        actionUrl: `/orders/${result.order.id}`,
+      });
+    } catch (notifErr) {
+      console.error("[Create Order API] Notification error:", notifErr);
+    }
 
     return NextResponse.json({
       success: true,
@@ -390,9 +392,9 @@ export async function POST(req: NextRequest) {
   }
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
-    const user = await getCurrentUser();
+    const user = await getSessionUser(req);
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }

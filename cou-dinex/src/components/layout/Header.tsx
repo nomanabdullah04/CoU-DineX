@@ -3,16 +3,18 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Bell, ShoppingCart, Sun, Moon, Menu, UtensilsCrossed, LogOut, User, Settings, Shield } from "lucide-react";
+import { Bell, ShoppingCart, Sun, Moon, Menu, LogOut, User, Settings, Shield } from "lucide-react";
 import { APP_NAME } from "@/lib/constants";
 import { useTheme } from "@/contexts/ThemeContext";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
+import { Logo } from "@/components/ui/Logo";
 
 interface HeaderProps {
   title?: string;
   cartItemCount?: number;
   notificationCount?: number;
   onMenuClick?: () => void;
+  showDesktopBrand?: boolean;
 }
 
 interface SessionUser {
@@ -26,6 +28,7 @@ export function Header({
   cartItemCount = 0,
   notificationCount = 0,
   onMenuClick,
+  showDesktopBrand = false,
 }: HeaderProps) {
   const { theme, toggleTheme } = useTheme();
   const router = useRouter();
@@ -91,24 +94,24 @@ export function Header({
       }}
       role="banner"
     >
-      {/* Mobile: hamburger + logo */}
-      <div style={{ display: "flex", alignItems: "center", gap: 8 }} className="flex lg:hidden">
+      {/* Mobile: hamburger + official Logo (strictly hidden on desktop) */}
+      <div className="header-mobile-brand">
         <button onClick={onMenuClick} style={iconBtn} aria-label="Open menu">
           <Menu size={20} aria-hidden="true" />
         </button>
-        <Link href="/home" style={{ display: "flex", alignItems: "center", gap: 8, textDecoration: "none" }} aria-label={APP_NAME}>
-          <div className="dinex-gradient-primary" style={{ width: 32, height: 32, borderRadius: 9, display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <UtensilsCrossed size={15} color="white" aria-hidden="true" />
-          </div>
-          <span style={{ fontWeight: 900, fontSize: 16, color: "var(--txt)", letterSpacing: "-0.02em" }}>
-            {APP_NAME}
-          </span>
-        </Link>
+        <Logo size="sm" href="/home" />
       </div>
+
+      {/* Desktop brand (only shown when page has NO sidebar) */}
+      {showDesktopBrand && (
+        <div className="hidden lg:flex" style={{ alignItems: "center" }}>
+          <Logo size="sm" href="/home" />
+        </div>
+      )}
 
       {/* Desktop: page title */}
       {title && (
-        <h1 style={{ fontSize: 20, fontWeight: 800, color: "var(--txt)", flex: 1, margin: 0 }} className="hidden lg:block">
+        <h1 style={{ fontSize: 18, fontWeight: 800, color: "var(--txt)", margin: 0 }} className="hidden lg:block">
           {title}
         </h1>
       )}

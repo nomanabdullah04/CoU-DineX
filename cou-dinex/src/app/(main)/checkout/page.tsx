@@ -140,9 +140,10 @@ export default function CheckoutPage() {
           setHalls(data.halls || []);
           setDepartments(data.departments || []);
 
-          // Pre-select first hall or department if available
+          // Pre-select first hall, department, and table if available
           if (data.halls?.length > 0) setSelectedHallId(data.halls[0].id);
           if (data.departments?.length > 0) setSelectedDeptId(data.departments[0].id);
+          if (data.cafeterias?.[0]?.tables?.length > 0) setSelectedTableId(data.cafeterias[0].tables[0].id);
         }
       } catch (err) {
         console.error("Failed to load checkout options", err);
@@ -220,10 +221,10 @@ export default function CheckoutPage() {
       return;
     }
 
-    if (destinationType === "EAT_HERE" && availableTables.length > 0 && !selectedTableId) {
-      setErrorMessage("Please select a dining table number to eat inside.");
-      return;
-    }
+    // Resolve table ID with graceful auto-selection
+    const effectiveTableId = destinationType === "EAT_HERE"
+      ? (selectedTableId || availableTables[0]?.id || undefined)
+      : undefined;
 
     if (destinationType === "HALL_DELIVERY") {
       if (!selectedHallId) {
@@ -258,7 +259,7 @@ export default function CheckoutPage() {
         })),
         destinationType,
         cafeteriaId: effectiveCafeteriaId,
-        tableId: destinationType === "EAT_HERE" ? selectedTableId || undefined : undefined,
+        tableId: effectiveTableId,
         hallId: destinationType === "HALL_DELIVERY" ? selectedHallId : undefined,
         departmentId: destinationType === "DEPARTMENT_DELIVERY" ? selectedDeptId : undefined,
         roomNumber: roomNumber.trim() || undefined,
