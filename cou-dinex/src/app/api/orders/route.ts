@@ -332,18 +332,33 @@ export async function POST(req: NextRequest) {
         },
       });
 
-      // 5.5 Create DeliveryTracking if delivery requested
-      if (
+      // 5.5 Create DeliveryTracking with secure handover OTP
+      const isDelivery =
         deliveryType === DeliveryType.HALL_DELIVERY ||
-        deliveryType === DeliveryType.DEPARTMENT_DELIVERY
-      ) {
-        await tx.deliveryTracking.create({
-          data: {
-            orderId: order.id,
-            estimatedDeliveryTime: new Date(Date.now() + 35 * 60 * 1000), // ~35 mins
-          },
-        });
-      }
+        deliveryType === DeliveryType.DEPARTMENT_DELIVERY;
+
+      const deliveryOtp = isDelivery
+        ? Math.floor(1000 + Math.random() * 9000).toString()
+        : null;
+      const pickupOtp = !isDelivery
+        ? Math.floor(1000 + Math.random() * 9000).toString()
+        : null;
+
+      await tx.deliveryTracking.create({
+        data: {
+          orderId: order.id,
+          deliveryOtp,
+          pickupOtp,
+          estimatedDeliveryTime: new Date(Date.now() + (isDelivery ? 35 : 15) * 60 * 1000),
+          trackingLogs: [
+            {
+              event: "ORDER_CREATED",
+              timestamp: new Date().toISOString(),
+              deliveryType,
+            },
+          ],
+        },
+      });
 
       return {
         order,

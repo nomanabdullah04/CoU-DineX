@@ -542,6 +542,9 @@ model DeliveryTracking {
   actualDeliveryTime    DateTime?
   currentLatitude       Float?
   currentLongitude      Float?
+  deliveryOtp           String?        // 4-digit secure delivery handover OTP
+  pickupOtp             String?        // 4-digit cafeteria counter pickup OTP
+  isOtpVerified         Boolean        @default(false)
   trackingLogs          Json?          // Array of { lat, lng, timestamp }
   createdAt             DateTime       @default(now())
   updatedAt             DateTime       @updatedAt

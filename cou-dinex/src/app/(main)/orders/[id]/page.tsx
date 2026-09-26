@@ -26,10 +26,39 @@ import {
   Receipt,
   CreditCard,
   Search,
+  KeyRound,
+  Bike,
+  ShieldCheck,
+  Copy,
+  Check,
 } from "lucide-react";
+import dynamic from "next/dynamic";
 import { getItemImageUrl } from "@/lib/foodImages";
 import { DemoPaymentModal } from "@/components/payment/DemoPaymentModal";
 import { PaymentMethod } from "@/lib/payment/types";
+
+const CampusDeliveryMap = dynamic(
+  () => import("@/components/delivery/CampusDeliveryMap").then((m) => m.CampusDeliveryMap),
+  {
+    ssr: false,
+    loading: () => (
+      <div
+        style={{
+          height: "380px",
+          borderRadius: 22,
+          background: "var(--surface-2)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          color: "var(--txt-muted)",
+          fontSize: 14,
+        }}
+      >
+        Loading Campus Delivery Map...
+      </div>
+    ),
+  }
+);
 
 interface TimelineStep {
   key: string;
@@ -88,8 +117,16 @@ interface OrderTrackingData {
   } | null;
   deliveryTracking?: {
     status: string;
+    deliveryOtp?: string | null;
+    pickupOtp?: string | null;
+    isOtpVerified?: boolean;
+    pickupTime?: string | null;
     estimatedDeliveryTime?: string | null;
+    actualDeliveryTime?: string | null;
+    currentLatitude?: number | null;
+    currentLongitude?: number | null;
     agent?: {
+      vehicleType?: string | null;
       user: {
         fullName: string;
         phone: string;
@@ -112,6 +149,7 @@ export default function OrderTrackingPage() {
   const [cancelFeedback, setCancelFeedback] = useState<string | null>(null);
   const [reorderSuccess, setReorderSuccess] = useState(false);
   const [payModalOpen, setPayModalOpen] = useState(false);
+  const [otpCopied, setOtpCopied] = useState(false);
 
   async function fetchOrder() {
     if (!orderId) return;
@@ -678,6 +716,228 @@ export default function OrderTrackingPage() {
               <span>Cooking/delivery is in progress. Order can no longer be cancelled.</span>
             )}
           </div>
+        </div>
+      )}
+
+      {/* CAMPUS DELIVERY & SECURE HANDOVER OTP SECTION */}
+      {!isCancelled && (order.deliveryType === "HALL_DELIVERY" || order.deliveryType === "DEPARTMENT_DELIVERY" || order.deliveryType === "CAFETERIA_PICKUP") && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 20, marginBottom: 24 }}>
+          {/* SECURE HANDOVER OTP CARD */}
+          {(order.deliveryTracking?.deliveryOtp || order.deliveryTracking?.pickupOtp) && (
+            <div
+              style={{
+                background: order.deliveryTracking?.isOtpVerified
+                  ? "linear-gradient(135deg, #ECFDF5 0%, #D1FAE5 100%)"
+                  : "linear-gradient(135deg, #F0FDFA 0%, #CCFBF1 100%)",
+                border: order.deliveryTracking?.isOtpVerified
+                  ? "2px solid #059669"
+                  : "2px solid #0F766E",
+                borderRadius: 22,
+                padding: "22px 24px",
+                boxShadow: "0 4px 16px rgba(15, 118, 110, 0.12)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                flexWrap: "wrap",
+                gap: 16,
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                <div
+                  style={{
+                    width: 48,
+                    height: 48,
+                    borderRadius: 14,
+                    background: order.deliveryTracking?.isOtpVerified ? "#059669" : "#0F766E",
+                    color: "#FFFFFF",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                    boxShadow: "0 4px 10px rgba(15, 118, 110, 0.3)",
+                  }}
+                >
+                  <KeyRound size={24} />
+                </div>
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span
+                      style={{
+                        fontSize: 11,
+                        fontWeight: 800,
+                        textTransform: "uppercase",
+                        letterSpacing: "0.06em",
+                        color: order.deliveryTracking?.isOtpVerified ? "#065F46" : "#0F766E",
+                      }}
+                    >
+                      {order.deliveryType === "CAFETERIA_PICKUP"
+                        ? "Counter Pick-up Verification Code"
+                        : "Secure Delivery Handover OTP"}
+                    </span>
+                    {order.deliveryTracking?.isOtpVerified && (
+                      <span
+                        style={{
+                          padding: "2px 8px",
+                          borderRadius: 8,
+                          background: "#059669",
+                          color: "#FFFFFF",
+                          fontSize: 10,
+                          fontWeight: 800,
+                        }}
+                      >
+                        ✓ VERIFIED
+                      </span>
+                    )}
+                  </div>
+
+                  <p style={{ margin: "3px 0 0 0", fontSize: 13, color: "#134E4A" }}>
+                    {order.deliveryTracking?.isOtpVerified
+                      ? "Handover has been securely verified and confirmed by your rider."
+                      : order.deliveryType === "CAFETERIA_PICKUP"
+                      ? "Show this 4-digit code to cafeteria counter staff to collect your meal."
+                      : "Share this 4-digit code with your rider upon receiving your package to complete handover."}
+                  </p>
+                </div>
+              </div>
+
+              {/* OTP Digits Display */}
+              {!order.deliveryTracking?.isOtpVerified && (
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <div
+                    style={{
+                      background: "#FFFFFF",
+                      padding: "8px 18px",
+                      borderRadius: 14,
+                      border: "2px dashed #0F766E",
+                      fontSize: 26,
+                      fontWeight: 900,
+                      letterSpacing: "0.25em",
+                      color: "#0F766E",
+                      boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
+                    }}
+                  >
+                    {order.deliveryType === "CAFETERIA_PICKUP"
+                      ? order.deliveryTracking?.pickupOtp
+                      : order.deliveryTracking?.deliveryOtp}
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      const code =
+                        order.deliveryType === "CAFETERIA_PICKUP"
+                          ? order.deliveryTracking?.pickupOtp
+                          : order.deliveryTracking?.deliveryOtp;
+                      if (code) {
+                        navigator.clipboard.writeText(code);
+                        setOtpCopied(true);
+                        setTimeout(() => setOtpCopied(false), 2000);
+                      }
+                    }}
+                    style={{
+                      padding: "10px 14px",
+                      borderRadius: 12,
+                      background: "#FFFFFF",
+                      border: "1px solid #CCFBF1",
+                      color: "#0F766E",
+                      fontSize: 12,
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 4,
+                      boxShadow: "0 2px 6px rgba(0,0,0,0.05)",
+                    }}
+                  >
+                    {otpCopied ? <Check size={14} color="#059669" /> : <Copy size={14} />}
+                    <span>{otpCopied ? "Copied" : "Copy"}</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ASSIGNED DELIVERY RIDER CARD */}
+          {order.deliveryTracking?.agent && (
+            <div
+              style={{
+                background: "var(--surface)",
+                border: "1px solid var(--border)",
+                borderRadius: 20,
+                padding: "18px 20px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                flexWrap: "wrap",
+                gap: 14,
+                boxShadow: "var(--shadow-card)",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                <div
+                  style={{
+                    width: 44,
+                    height: 44,
+                    borderRadius: 12,
+                    background: "#FEF3C7",
+                    color: "#D97706",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Bike size={22} />
+                </div>
+                <div>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: "var(--txt-muted)", textTransform: "uppercase" }}>
+                    Assigned Campus Rider
+                  </span>
+                  <h3 style={{ fontSize: 16, fontWeight: 800, margin: "2px 0 0 0", color: "var(--txt)" }}>
+                    {order.deliveryTracking.agent.user.fullName}
+                  </h3>
+                  <span style={{ fontSize: 12, color: "var(--txt-muted)" }}>
+                    {order.deliveryTracking.agent.vehicleType || "Campus Delivery Bike"} • Active Delivery
+                  </span>
+                </div>
+              </div>
+
+              {order.deliveryTracking.agent.user.phone && (
+                <a
+                  href={`tel:${order.deliveryTracking.agent.user.phone}`}
+                  style={{
+                    padding: "9px 16px",
+                    borderRadius: 12,
+                    background: "#0F766E",
+                    color: "#FFFFFF",
+                    fontSize: 13,
+                    fontWeight: 700,
+                    textDecoration: "none",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 6,
+                    boxShadow: "0 2px 8px rgba(15, 118, 110, 0.2)",
+                  }}
+                >
+                  <Phone size={14} />
+                  <span>Call Rider</span>
+                </a>
+              )}
+            </div>
+          )}
+
+          {/* INTERACTIVE CAMPUS DELIVERY MAP */}
+          <CampusDeliveryMap
+            deliveryType={order.deliveryType as any}
+            destinationName={getDestinationDisplay()}
+            hallCode={order.deliveryLocation?.hall?.code}
+            deptCode={order.deliveryLocation?.department?.code}
+            deliveryStatus={order.deliveryTracking?.status || order.status}
+            riderLat={order.deliveryTracking?.currentLatitude}
+            riderLng={order.deliveryTracking?.currentLongitude}
+            agentName={order.deliveryTracking?.agent?.user.fullName}
+            agentPhone={order.deliveryTracking?.agent?.user.phone}
+            agentVehicle={order.deliveryTracking?.agent?.vehicleType}
+            height="380px"
+          />
         </div>
       )}
 
