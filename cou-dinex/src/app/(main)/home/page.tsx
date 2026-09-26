@@ -155,9 +155,16 @@ export default function HomePage() {
         }
         throw new Error("Unable to fetch dashboard data. Please try again.");
       }
-      const json = await res.json();
+      if (json.student?.role === "DELIVERY_AGENT") {
+        window.location.href = "/delivery";
+        return;
+      }
       if (json.student?.role === "CAFETERIA_STAFF") {
         window.location.href = "/kitchen";
+        return;
+      }
+      if (json.student?.role === "SUPER_ADMIN" || json.student?.role === "CAFETERIA_ADMIN") {
+        window.location.href = "/admin";
         return;
       }
       setData(json);

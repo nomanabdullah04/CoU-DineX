@@ -48,19 +48,22 @@ function LoginForm() {
 
       // Success — intelligently redirect by role
       const userRole = data.user?.role;
-      let roleDefault = "/home";
+      let destination = "/home";
 
-      if (userRole === "CAFETERIA_STAFF") {
-        roleDefault = "/kitchen";
+      if (userRole === "DELIVERY_AGENT") {
+        destination = "/delivery";
+      } else if (userRole === "CAFETERIA_STAFF") {
+        destination = "/kitchen";
       } else if (userRole === "CAFETERIA_ADMIN" || userRole === "SUPER_ADMIN") {
-        roleDefault = "/admin";
-      } else if (userRole === "DELIVERY_AGENT") {
-        roleDefault = "/delivery";
-      }
-
-      // If user is staff or admin, never let an accidental callbackUrl to /home redirect them to student home
-      let destination = roleDefault;
-      if (callbackUrl && callbackUrl !== "/" && callbackUrl !== "/home") {
+        destination = callbackUrl && callbackUrl.startsWith("/admin") ? callbackUrl : "/admin";
+      } else if (
+        callbackUrl &&
+        callbackUrl !== "/" &&
+        !callbackUrl.startsWith("/login") &&
+        !callbackUrl.startsWith("/admin") &&
+        !callbackUrl.startsWith("/kitchen") &&
+        !callbackUrl.startsWith("/delivery")
+      ) {
         destination = callbackUrl;
       }
 

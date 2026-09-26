@@ -272,8 +272,7 @@ export default function DeliveryDashboardPage() {
         {/* Right Quick Actions */}
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <Link
-            href="/campus-map"
-            target="_blank"
+            href="/delivery/map"
             style={{
               padding: "8px 14px",
               borderRadius: 12,
@@ -310,6 +309,29 @@ export default function DeliveryDashboardPage() {
           >
             <RefreshCw size={14} />
             <span>Sync</span>
+          </button>
+
+          <button
+            onClick={async () => {
+              await fetch("/api/auth/logout", { method: "POST" });
+              window.location.href = "/login";
+            }}
+            style={{
+              padding: "8px 14px",
+              borderRadius: 12,
+              background: "#FEE2E2",
+              border: "1px solid #FCA5A5",
+              color: "#DC2626",
+              fontSize: 13,
+              fontWeight: 700,
+              cursor: "pointer",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+            }}
+          >
+            <LogOut size={14} />
+            <span>Logout</span>
           </button>
         </div>
       </div>
