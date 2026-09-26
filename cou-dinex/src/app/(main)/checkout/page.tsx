@@ -21,7 +21,19 @@ import {
   AlertCircle,
   Truck,
   Coffee,
+  Banknote,
+  CreditCard,
+  Rocket,
+  Zap,
+  Smartphone,
+  AlertTriangle,
+  Receipt,
+  Home,
+  PlusCircle,
 } from "lucide-react";
+import { PaymentMethod, PAYMENT_METHOD_CONFIGS } from "@/lib/payment/types";
+import { DemoPaymentModal } from "@/components/payment/DemoPaymentModal";
+import { OrderSuccessView } from "@/components/checkout/OrderSuccessView";
 
 type DestinationType = "EAT_HERE" | "TAKE_AWAY" | "CAFETERIA_PICKUP" | "HALL_DELIVERY" | "DEPARTMENT_DELIVERY";
 
@@ -88,12 +100,34 @@ export default function CheckoutPage() {
   const [submitting, setSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Redirect to cart if cart is empty
+  // Payment state (Phase 10)
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod>(PaymentMethod.CASH_ON_DELIVERY);
+  const [demoModalOpen, setDemoModalOpen] = useState(false);
+  const [createdOrderData, setCreatedOrderData] = useState<{
+    orderId: string;
+    orderNumber: string;
+    amount: number;
+    method: PaymentMethod;
+  } | null>(null);
+
+  // Order Success & Confirmation State
+  const [orderPlaced, setOrderPlaced] = useState(false);
+  const [confirmedOrder, setConfirmedOrder] = useState<{
+    orderId: string;
+    orderNumber: string;
+    totalAmount: number;
+    paymentMethod: string;
+    cafeteriaName: string;
+    deliveryType: string;
+    isDemo: boolean;
+  } | null>(null);
+
+  // Redirect to cart if cart is empty ONLY if an order was not just completed
   useEffect(() => {
-    if (items.length === 0) {
+    if (items.length === 0 && !orderPlaced) {
       router.replace("/cart");
     }
-  }, [items.length, router]);
+  }, [items.length, orderPlaced, router]);
 
   // Fetch destination options (tables, halls, departments)
   useEffect(() => {
@@ -230,6 +264,7 @@ export default function CheckoutPage() {
         roomNumber: roomNumber.trim() || undefined,
         landmark: landmark.trim() || undefined,
         notes: orderNotes.trim() || undefined,
+        paymentMethod: selectedPaymentMethod,
       };
 
       const res = await fetch("/api/orders", {
@@ -246,15 +281,42 @@ export default function CheckoutPage() {
         return;
       }
 
-      // Successful order creation
-      clearCart();
-      router.push(`/orders/${data.orderId}`);
+      // If simulated payment, open the interactive DemoPaymentModal
+      if (selectedPaymentMethod !== PaymentMethod.CASH_ON_DELIVERY) {
+        setCreatedOrderData({
+          orderId: data.orderId,
+          orderNumber: data.orderNumber || data.orderId.slice(0, 8),
+          amount: totalAmount,
+          method: selectedPaymentMethod,
+        });
+        setDemoModalOpen(true);
+        setSubmitting(false);
+      } else {
+        // Cash payment -> Show celebration screen
+        setConfirmedOrder({
+          orderId: data.orderId,
+          orderNumber: data.orderNumber || data.orderId.slice(0, 8),
+          totalAmount,
+          paymentMethod: "Cash on Delivery",
+          cafeteriaName: activeCafeteria?.name || cafeteriaName || "Central Cafeteria",
+          deliveryType: destinationType,
+          isDemo: false,
+        });
+        setOrderPlaced(true);
+        clearCart();
+        setSubmitting(false);
+      }
     } catch (err) {
       console.error("Order creation failed", err);
       setErrorMessage("Network error occurred. Please try again.");
       setSubmitting(false);
     }
   };
+
+  // If an order was just placed, display the Thank You & Order Confirmed celebration screen
+  if (orderPlaced && confirmedOrder) {
+    return <OrderSuccessView order={confirmedOrder} onOrderMore={() => router.push("/explore")} />;
+  }
 
   if (items.length === 0) {
     return null;
@@ -668,6 +730,186 @@ export default function CheckoutPage() {
               />
             </div>
           </div>
+
+          {/* 3. Payment Method Selection (Phase 10) */}
+          <div
+            style={{
+              marginTop: 20,
+              background: "var(--surface)",
+              border: "1px solid var(--border)",
+              borderRadius: 22,
+              padding: "24px 20px",
+              boxShadow: "var(--shadow-card)",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+              <h2 style={{ fontSize: 18, fontWeight: 800, color: "var(--txt)", margin: 0 }}>
+                3. Payment Method
+              </h2>
+              <span
+                style={{
+                  fontSize: 11,
+                  fontWeight: 700,
+                  padding: "3px 8px",
+                  borderRadius: 12,
+                  background: "var(--surface-2)",
+                  color: "var(--txt-muted)",
+                }}
+              >
+                Secure Gateway
+              </span>
+            </div>
+
+            {/* Demo Payment Notice Banner */}
+            <div
+              style={{
+                background: "#FEF3C7",
+                border: "1px dashed #F59E0B",
+                borderRadius: 12,
+                padding: "10px 14px",
+                marginBottom: 16,
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                fontSize: 12,
+                color: "#92400E",
+                lineHeight: 1.4,
+              }}
+            >
+              <AlertTriangle size={18} className="shrink-0 text-amber-600" />
+              <span>
+                <strong>Demo Payment:</strong> Mobile financial service &amp; card methods are simulated demo gateways for campus evaluation. No real currency is charged.
+              </span>
+            </div>
+
+            {/* Payment Methods Grid */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {[
+                {
+                  method: PaymentMethod.CASH_ON_DELIVERY,
+                  name: "Cash",
+                  subtitle: "Pay cash at counter pickup or to the delivery rider",
+                  icon: Banknote,
+                  color: "#0F766E",
+                  isDemo: false,
+                  badge: "Standard Cash",
+                },
+                {
+                  method: PaymentMethod.BKASH,
+                  name: "Simulated bKash",
+                  subtitle: "Simulated bKash sandbox checkout",
+                  icon: Smartphone,
+                  color: "#E2136E",
+                  isDemo: true,
+                  badge: "Demo Payment",
+                },
+                {
+                  method: PaymentMethod.NAGAD,
+                  name: "Simulated Nagad",
+                  subtitle: "Simulated Nagad mobile wallet",
+                  icon: Zap,
+                  color: "#F7941D",
+                  isDemo: true,
+                  badge: "Demo Payment",
+                },
+                {
+                  method: PaymentMethod.ROCKET,
+                  name: "Simulated Rocket",
+                  subtitle: "Simulated DBBL Rocket 12-digit account",
+                  icon: Rocket,
+                  color: "#8C3494",
+                  isDemo: true,
+                  badge: "Demo Payment",
+                },
+                {
+                  method: PaymentMethod.CARD,
+                  name: "Simulated Card",
+                  subtitle: "Simulated Visa / Mastercard debit & credit card",
+                  icon: CreditCard,
+                  color: "#2563EB",
+                  isDemo: true,
+                  badge: "Demo Payment",
+                },
+              ].map((item) => {
+                const isSelected = selectedPaymentMethod === item.method;
+                const Icon = item.icon;
+                return (
+                  <button
+                    key={item.method}
+                    type="button"
+                    onClick={() => setSelectedPaymentMethod(item.method)}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      padding: "12px 16px",
+                      borderRadius: 14,
+                      border: isSelected
+                        ? `2px solid ${item.color}`
+                        : "1px solid var(--border)",
+                      background: isSelected ? "var(--surface-2)" : "var(--surface)",
+                      cursor: "pointer",
+                      textAlign: "left",
+                      transition: "all 150ms ease",
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                      <div
+                        style={{
+                          width: 38,
+                          height: 38,
+                          borderRadius: 10,
+                          background: isSelected ? item.color : "var(--border)",
+                          color: isSelected ? "#FFFFFF" : "var(--txt-muted)",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          flexShrink: 0,
+                          transition: "all 150ms ease",
+                        }}
+                      >
+                        <Icon size={18} />
+                      </div>
+                      <div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <span style={{ fontSize: 14, fontWeight: 700, color: "var(--txt)" }}>
+                            {item.name}
+                          </span>
+                          <span
+                            style={{
+                              fontSize: 10,
+                              fontWeight: 800,
+                              padding: "2px 6px",
+                              borderRadius: 6,
+                              background: item.isDemo ? "#FEF3C7" : "#DCFCE7",
+                              color: item.isDemo ? "#B45309" : "#16A34A",
+                            }}
+                          >
+                            {item.badge}
+                          </span>
+                        </div>
+                        <span style={{ fontSize: 12, color: "var(--txt-muted)", display: "block" }}>
+                          {item.subtitle}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div
+                      style={{
+                        width: 20,
+                        height: 20,
+                        borderRadius: "50%",
+                        border: isSelected ? `6px solid ${item.color}` : "2px solid var(--border)",
+                        background: "#FFFFFF",
+                        flexShrink: 0,
+                        marginLeft: 12,
+                      }}
+                    />
+                  </button>
+                );
+              })}
+            </div>
+          </div>
         </div>
 
         {/* Right Column: Pre-Order Summary Card */}
@@ -805,23 +1047,36 @@ export default function CheckoutPage() {
               </div>
             </div>
 
-            {/* Payment Mode Note (No real payment yet) */}
+            {/* Payment Mode Note */}
             <div
               style={{
                 marginTop: 14,
-                padding: "10px 12px",
-                borderRadius: 12,
+                padding: "12px 14px",
+                borderRadius: 14,
                 background: "var(--surface-2)",
                 border: "1px solid var(--border)",
                 fontSize: 12,
                 color: "var(--txt-2)",
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
               }}
             >
-              <CheckCircle2 size={16} color="#059669" />
-              <span>Payment Mode: <strong>Pay at Counter / Cash on Delivery</strong></span>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+                <span style={{ fontWeight: 600 }}>Payment Method:</span>
+                <span
+                  style={{
+                    fontSize: 10,
+                    fontWeight: 800,
+                    padding: "2px 7px",
+                    borderRadius: 6,
+                    background: selectedPaymentMethod !== PaymentMethod.CASH_ON_DELIVERY ? "#FEF3C7" : "#DCFCE7",
+                    color: selectedPaymentMethod !== PaymentMethod.CASH_ON_DELIVERY ? "#B45309" : "#16A34A",
+                  }}
+                >
+                  {selectedPaymentMethod !== PaymentMethod.CASH_ON_DELIVERY ? "Demo Payment" : "Standard Cash"}
+                </span>
+              </div>
+              <div style={{ fontWeight: 800, color: "var(--txt)", fontSize: 13 }}>
+                {PAYMENT_METHOD_CONFIGS[selectedPaymentMethod]?.name || selectedPaymentMethod}
+              </div>
             </div>
 
             {/* Place Order Button */}
@@ -850,12 +1105,48 @@ export default function CheckoutPage() {
                 transition: "all 150ms ease",
               }}
             >
-              <span>{submitting ? "Placing Order with Kitchen..." : "Confirm & Place Order"}</span>
+              <span>
+                {submitting
+                  ? "Placing Order..."
+                  : selectedPaymentMethod === PaymentMethod.CASH_ON_DELIVERY
+                  ? "Confirm & Place Order (Pay Cash)"
+                  : `Proceed to Demo Payment (৳${totalAmount.toFixed(0)})`}
+              </span>
               {!submitting && <ArrowRight size={18} />}
             </button>
           </div>
         </div>
       </div>
+
+      {/* Interactive Demo Payment Modal */}
+      {createdOrderData && (
+        <DemoPaymentModal
+          isOpen={demoModalOpen}
+          orderId={createdOrderData.orderId}
+          orderNumber={createdOrderData.orderNumber}
+          amount={createdOrderData.amount}
+          method={createdOrderData.method}
+          onSuccess={(_receiptUrl) => {
+            const config = PAYMENT_METHOD_CONFIGS[createdOrderData.method];
+            setConfirmedOrder({
+              orderId: createdOrderData.orderId,
+              orderNumber: createdOrderData.orderNumber,
+              totalAmount: createdOrderData.amount,
+              paymentMethod: config?.name || "Demo Payment",
+              cafeteriaName: activeCafeteria?.name || cafeteriaName || "Central Cafeteria",
+              deliveryType: destinationType,
+              isDemo: config?.isDemo ?? true,
+            });
+            setOrderPlaced(true);
+            clearCart();
+            setDemoModalOpen(false);
+          }}
+          onCancel={() => {
+            setDemoModalOpen(false);
+            setErrorMessage("Simulated payment was cancelled. You can choose another method or pay with Cash.");
+          }}
+        />
+      )}
     </div>
   );
 }

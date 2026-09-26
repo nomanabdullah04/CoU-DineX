@@ -17,6 +17,7 @@ import {
   GraduationCap,
   XCircle,
   RotateCcw,
+  Receipt,
 } from "lucide-react";
 import { getItemImageUrl } from "@/lib/foodImages";
 
@@ -475,6 +476,29 @@ export default function OrdersPage() {
                   </div>
 
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    {/* Digital Receipt Link */}
+                    <Link
+                      href={`/orders/${order.id}/receipt`}
+                      target="_blank"
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 5,
+                        padding: "7px 11px",
+                        borderRadius: 10,
+                        background: "var(--surface-2)",
+                        border: "1px solid var(--border)",
+                        color: "var(--txt)",
+                        fontSize: 12,
+                        fontWeight: 700,
+                        textDecoration: "none",
+                      }}
+                      title="View digital receipt"
+                    >
+                      <Receipt size={13} />
+                      <span>Receipt</span>
+                    </Link>
+
                     {/* Reorder Button */}
                     <button
                       onClick={() => handleReorder(order)}

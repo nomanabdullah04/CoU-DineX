@@ -68,6 +68,10 @@ export async function getCurrentUser(): Promise<AuthSessionPayload | null> {
   return verifySessionToken(token);
 }
 
+export async function getSessionUser(_req?: any): Promise<AuthSessionPayload | null> {
+  return getCurrentUser();
+}
+
 /**
  * Fetch full user record from database matching the current session
  */

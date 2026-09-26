@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Bell, ShoppingCart, Sun, Moon, Menu, UtensilsCrossed, LogOut, User, Settings, Shield } from "lucide-react";
 import { APP_NAME } from "@/lib/constants";
 import { useTheme } from "@/contexts/ThemeContext";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
 
 interface HeaderProps {
   title?: string;
@@ -116,14 +117,7 @@ export function Header({
       <div style={{ flex: 1 }} />
 
       {/* Notifications */}
-      <Link href="/notifications" style={{ ...iconBtn, position: "relative", textDecoration: "none" }} aria-label="Notifications">
-        <Bell size={19} aria-hidden="true" />
-        {notificationCount > 0 && (
-          <span style={{ position: "absolute", top: 4, right: 4, width: 16, height: 16, borderRadius: "50%", background: "var(--error)", color: "white", fontSize: 9, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>
-            {notificationCount > 9 ? "9+" : notificationCount}
-          </span>
-        )}
-      </Link>
+      <NotificationBell />
 
       {/* Cart */}
       <Link href="/cart" style={{ ...iconBtn, position: "relative", textDecoration: "none" }} aria-label="Cart">

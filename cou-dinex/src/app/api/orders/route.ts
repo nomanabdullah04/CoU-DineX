@@ -19,6 +19,7 @@ interface CreateOrderBody {
   roomNumber?: string;
   landmark?: string;
   notes?: string;
+  paymentMethod?: PaymentMethod;
 }
 
 // Generate human-readable order number: COU-YYYYMMDD-XXXX
@@ -235,7 +236,7 @@ export async function POST(req: NextRequest) {
     const calculatedTotalAmount = calculatedSubtotal + deliveryFee;
 
     // 5. Execute Database Transaction
-    const newOrder = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx) => {
       // 5.1 Create Delivery Location if Hall or Department Delivery
       let deliveryLocationId: string | undefined = undefined;
 
@@ -312,13 +313,27 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      // 5.4 Create pending Payment record (Cash on delivery / pay at counter as instructed)
-      await tx.payment.create({
+      // 5.4 Create Payment record according to selected method
+      const selectedMethod = (body.paymentMethod && Object.values(PaymentMethod).includes(body.paymentMethod))
+        ? body.paymentMethod
+        : PaymentMethod.CASH_ON_DELIVERY;
+
+      const isDemo = selectedMethod !== PaymentMethod.CASH_ON_DELIVERY;
+      const initialPaymentStatus = isDemo ? PaymentStatus.PROCESSING : PaymentStatus.PENDING;
+      const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+      const randomSuffix = Math.floor(10000 + Math.random() * 90000);
+      const receiptNumber = `REC-${dateStr}-${randomSuffix}`;
+      const gatewayRef = `${selectedMethod}-${Date.now()}`;
+
+      const createdPayment = await tx.payment.create({
         data: {
           orderId: order.id,
           amount: calculatedTotalAmount,
-          method: PaymentMethod.CASH_ON_DELIVERY,
-          status: PaymentStatus.PENDING,
+          method: selectedMethod,
+          status: initialPaymentStatus,
+          isDemo,
+          receiptNumber,
+          gatewayRef,
         },
       });
 
@@ -339,22 +354,32 @@ export async function POST(req: NextRequest) {
       await tx.notification.create({
         data: {
           userId: user.userId,
-          type: NotificationType.ORDER_UPDATE,
-          title: "Order Placed Successfully!",
-          body: `Your order #${orderNumber} for ৳${calculatedTotalAmount.toFixed(0)} has been placed at ${cafeteria.name}.`,
+          type: NotificationType.ORDER_CONFIRMED,
+          title: "Order Confirmed!",
+          body: `Your order #${orderNumber} for ৳${calculatedTotalAmount.toFixed(0)} has been placed at ${cafeteria.name}. Payment method: ${selectedMethod}${isDemo ? " (Demo Payment)" : ""}.`,
           actionUrl: `/orders/${order.id}`,
         },
       });
 
-      return order;
+      return {
+        order,
+        payment: createdPayment,
+      };
     });
 
     return NextResponse.json({
       success: true,
       message: "Order placed successfully!",
-      orderId: newOrder.id,
-      orderNumber: newOrder.orderNumber,
+      orderId: result.order.id,
+      orderNumber: result.order.orderNumber,
       totalAmount: calculatedTotalAmount,
+      payment: {
+        id: result.payment.id,
+        method: result.payment.method,
+        status: result.payment.status,
+        isDemo: result.payment.isDemo,
+        receiptNumber: result.payment.receiptNumber,
+      },
     });
   } catch (error) {
     console.error("[Create Order API] Error:", error);

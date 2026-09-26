@@ -24,6 +24,7 @@ import {
   DollarSign,
   Info,
   Search,
+  Receipt,
 } from "lucide-react";
 import { getItemImageUrl } from "@/lib/foodImages";
 
@@ -338,6 +339,28 @@ export default function OrderTrackingPage() {
 
           {/* Quick Actions in Banner */}
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            {/* Digital Receipt Button */}
+            <Link
+              href={`/orders/${order.id}/receipt`}
+              target="_blank"
+              style={{
+                padding: "8px 14px",
+                borderRadius: 12,
+                background: "rgba(255,255,255,0.22)",
+                color: "#FFFFFF",
+                fontWeight: 700,
+                fontSize: 13,
+                textDecoration: "none",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                border: "1px solid rgba(255,255,255,0.4)",
+              }}
+            >
+              <Receipt size={15} />
+              <span>Digital Receipt</span>
+            </Link>
+
             {/* Reorder Button */}
             <button
               onClick={handleReorder}

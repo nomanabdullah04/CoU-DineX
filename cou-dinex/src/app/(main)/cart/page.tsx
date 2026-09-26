@@ -71,26 +71,48 @@ export default function CartPage() {
           <p style={{ fontSize: 14, color: "var(--txt-muted)", maxWidth: 420, margin: "0 auto 24px auto" }}>
             Looks like you haven&apos;t added any delicious campus food yet. Explore the menu to order lunch, snacks, or coffee!
           </p>
-          <Link
-            href="/explore"
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 8,
-              padding: "12px 24px",
-              borderRadius: 14,
-              background: "var(--primary)",
-              color: "#FFFFFF",
-              fontWeight: 700,
-              fontSize: 14,
-              textDecoration: "none",
-              boxShadow: "var(--shadow-primary)",
-            }}
-          >
-            <Utensils size={18} />
-            <span>Explore Campus Menu</span>
-            <ArrowRight size={16} />
-          </Link>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12, flexWrap: "wrap" }}>
+            <Link
+              href="/explore"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 8,
+                padding: "12px 24px",
+                borderRadius: 14,
+                background: "var(--primary)",
+                color: "#FFFFFF",
+                fontWeight: 700,
+                fontSize: 14,
+                textDecoration: "none",
+                boxShadow: "var(--shadow-primary)",
+              }}
+            >
+              <Utensils size={18} />
+              <span>Explore Campus Menu</span>
+              <ArrowRight size={16} />
+            </Link>
+
+            <Link
+              href="/orders"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 8,
+                padding: "12px 22px",
+                borderRadius: 14,
+                background: "var(--surface-2)",
+                border: "1px solid var(--border)",
+                color: "var(--txt)",
+                fontWeight: 700,
+                fontSize: 14,
+                textDecoration: "none",
+              }}
+            >
+              <Clock size={16} />
+              <span>Track Active Orders</span>
+            </Link>
+          </div>
         </div>
       </div>
     );

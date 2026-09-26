@@ -133,10 +133,20 @@ export async function PATCH(req: NextRequest, { params }: Props) {
         CANCELLED: "Order Cancelled",
       };
 
+      const statusTypeMap: Record<string, NotificationType> = {
+        CONFIRMED: NotificationType.ORDER_CONFIRMED,
+        PREPARING: NotificationType.ORDER_PREPARING,
+        READY_FOR_PICKUP: NotificationType.ORDER_READY,
+        OUT_FOR_DELIVERY: NotificationType.ORDER_OUT_FOR_DELIVERY,
+        DELIVERED: NotificationType.ORDER_DELIVERED,
+      };
+
+      const notificationType = statusTypeMap[targetStatus] || NotificationType.ORDER_UPDATE;
+
       await tx.notification.create({
         data: {
           userId: order.userId,
-          type: NotificationType.ORDER_UPDATE,
+          type: notificationType,
           title: statusTitleMap[targetStatus] || "Order Status Updated",
           body: `Order #${order.orderNumber} is now ${targetStatus.replace(/_/g, " ")}.`,
           actionUrl: `/orders/${order.id}`,

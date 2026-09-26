@@ -8,6 +8,7 @@ import {
   AuditAction,
   NotificationType,
 } from "@prisma/client";
+import { sendNotification } from "@/lib/notifications/notification-service";
 
 export async function GET(
   req: NextRequest,
@@ -199,15 +200,17 @@ export async function POST(
       },
     });
 
-    // 5. Send in-app Notification to student
-    await prisma.notification.create({
-      data: {
-        userId: student.userId,
-        type: NotificationType.VERIFICATION,
-        title: notificationTitle,
-        body: notificationMessage,
-        actionUrl: "/student/verification-status",
-      },
+    // 5. Send real event Notification to student via Phase 11 notification service
+    let notificationType: NotificationType = NotificationType.STUDENT_VERIFIED;
+    if (action === "REJECT") notificationType = NotificationType.STUDENT_REJECTED;
+    if (action === "REQUEST_INFO") notificationType = NotificationType.MORE_INFORMATION_REQUIRED;
+
+    await sendNotification({
+      userId: student.userId,
+      type: notificationType,
+      title: notificationTitle,
+      body: notificationMessage,
+      actionUrl: "/student/verification-status",
     });
 
     return NextResponse.json({

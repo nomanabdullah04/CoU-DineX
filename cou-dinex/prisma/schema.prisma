@@ -47,6 +47,7 @@ enum OrderStatus {
 
 enum PaymentStatus {
   PENDING
+  PROCESSING
   PAID
   FAILED
   REFUNDED
@@ -54,10 +55,11 @@ enum PaymentStatus {
 }
 
 enum PaymentMethod {
+  CASH_ON_DELIVERY
   BKASH
   NAGAD
   ROCKET
-  CASH_ON_DELIVERY
+  CARD
   WALLET
 }
 
@@ -93,6 +95,21 @@ enum ComplaintStatus {
 }
 
 enum NotificationType {
+  // Phase 11 Official Types
+  ORDER_CONFIRMED
+  ORDER_PREPARING
+  ORDER_READY
+  ORDER_OUT_FOR_DELIVERY
+  ORDER_DELIVERED
+  PAYMENT_SUCCESS
+  PAYMENT_FAILED
+  STUDENT_VERIFIED
+  STUDENT_REJECTED
+  MORE_INFORMATION_REQUIRED
+  SPECIAL_OFFER
+  SYSTEM_NOTIFICATION
+
+  // Legacy fallback types
   ORDER_UPDATE
   DELIVERY_ALERT
   PROMOTION
@@ -139,8 +156,9 @@ model User {
   orders              Order[]
   reviews             Review[]
   complaints          Complaint[]
-  notifications       Notification[]
-  rewards             Reward[]
+  notifications          Notification[]
+  notificationPreference NotificationPreference?
+  rewards                Reward[]
   auditLogs           AuditLog[]
   groupMemberships    GroupMember[]
   groupOrdersCreated  GroupOrder[]          @relation("GroupOrderCreator")
@@ -455,11 +473,14 @@ model Payment {
   gatewayRef         String?
   paidAt             DateTime?
   rawGatewayResponse Json?
+  receiptNumber      String?       @unique
+  isDemo             Boolean       @default(false)
   createdAt          DateTime      @default(now())
   updatedAt          DateTime      @updatedAt
 
   @@index([status])
   @@index([transactionId])
+  @@index([receiptNumber])
   @@map("payments")
 }
 
@@ -550,6 +571,27 @@ model Notification {
 
   @@index([userId, isRead])
   @@map("notifications")
+}
+
+// ==========================================
+// 17.1 NOTIFICATION PREFERENCES
+// ==========================================
+
+model NotificationPreference {
+  id                  String   @id @default(uuid())
+  userId              String   @unique
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orderUpdates        Boolean  @default(true) // For ORDER_CONFIRMED, PREPARING, READY, OUT_FOR_DELIVERY, DELIVERED
+  paymentAlerts       Boolean  @default(true) // For PAYMENT_SUCCESS, PAYMENT_FAILED
+  studentVerification Boolean  @default(true) // For STUDENT_VERIFIED, REJECTED, MORE_INFO
+  specialOffers       Boolean  @default(true) // For SPECIAL_OFFER (promotions, can be disabled)
+  systemAlerts        Boolean  @default(true) // For SYSTEM_NOTIFICATION
+  pushEnabled         Boolean  @default(true) // In-app / FCM Push alerts
+  fcmToken            String?  // Firebase Cloud Messaging device registration token
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@map("notification_preferences")
 }
 
 // ==========================================
