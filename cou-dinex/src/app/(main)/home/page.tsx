@@ -32,6 +32,8 @@ import {
   Radio,
   ChefHat,
   GraduationCap,
+  Users,
+  Calendar,
 } from "lucide-react";
 
 interface DashboardData {
@@ -143,31 +145,93 @@ export default function HomePage() {
   const [copiedCode, setCopiedCode] = React.useState<string | null>(null);
   const [addedItemIds, setAddedItemIds] = React.useState<Record<string, boolean>>({});
 
+  // Phase 13 Innovation telemetry states
+  const [radarTelemetry, setRadarTelemetry] = React.useState<{
+    crowdLevel: string;
+    crowdColor: string;
+    availableNow: number;
+    soldOut: number;
+    estimatedWaitMinutes: number;
+  } | null>(null);
+
+  const [smartQueueTelemetry, setSmartQueueTelemetry] = React.useState<{
+    totalOrders: number;
+    queueStatus: string;
+    estimatedPrepMinutes: number;
+    suggestedOrderTime: string;
+  } | null>(null);
+
+  const [classRecommendation, setClassRecommendation] = React.useState<{
+    type: string;
+    message: string;
+    reason: string;
+    suggestedAction: string;
+    suggestedTargetTime?: string;
+  } | null>(null);
+
   const fetchDashboardData = React.useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/student/dashboard", { cache: "no-store" });
-      if (!res.ok) {
-        if (res.status === 401) {
-          window.location.href = "/login?callbackUrl=/home";
+      const [resDashboard, resRadar, resQueue, resSchedule] = await Promise.allSettled([
+        fetch("/api/student/dashboard", { cache: "no-store" }),
+        fetch("/api/innovation/radar", { cache: "no-store" }),
+        fetch("/api/innovation/smart-queue", { cache: "no-store" }),
+        fetch("/api/innovation/class-schedule", { cache: "no-store" }),
+      ]);
+
+      if (resDashboard.status === "fulfilled" && resDashboard.value.ok) {
+        const json = await resDashboard.value.json();
+        if (json.student?.role === "DELIVERY_AGENT") {
+          window.location.href = "/delivery";
           return;
         }
+        if (json.student?.role === "CAFETERIA_STAFF") {
+          window.location.href = "/kitchen";
+          return;
+        }
+        if (json.student?.role === "SUPER_ADMIN" || json.student?.role === "CAFETERIA_ADMIN") {
+          window.location.href = "/admin";
+          return;
+        }
+        setData(json);
+      } else if (resDashboard.status === "fulfilled" && resDashboard.value.status === 401) {
+        window.location.href = "/login?callbackUrl=/home";
+        return;
+      } else {
         throw new Error("Unable to fetch dashboard data. Please try again.");
       }
-      if (json.student?.role === "DELIVERY_AGENT") {
-        window.location.href = "/delivery";
-        return;
+
+      // Populate Radar Telemetry
+      if (resRadar.status === "fulfilled" && resRadar.value.ok) {
+        const rJson = await resRadar.value.json();
+        setRadarTelemetry({
+          crowdLevel: rJson.telemetry?.crowdLevel || "LOW CROWD",
+          crowdColor: rJson.telemetry?.crowdColor || "#16A34A",
+          availableNow: rJson.counts?.availableNow || 0,
+          soldOut: rJson.counts?.soldOut || 0,
+          estimatedWaitMinutes: rJson.telemetry?.estimatedWaitMinutes || 12,
+        });
       }
-      if (json.student?.role === "CAFETERIA_STAFF") {
-        window.location.href = "/kitchen";
-        return;
+
+      // Populate Smart Queue Telemetry
+      if (resQueue.status === "fulfilled" && resQueue.value.ok) {
+        const qJson = await resQueue.value.json();
+        setSmartQueueTelemetry({
+          totalOrders: qJson.currentQueue?.totalOrders || 0,
+          queueStatus: qJson.currentQueue?.queueStatus || "SMOOTH",
+          estimatedPrepMinutes: qJson.estimation?.estimatedPreparationMinutes || 12,
+          suggestedOrderTime: qJson.estimation?.suggestedOrderTime || "Order now for minimum wait",
+        });
       }
-      if (json.student?.role === "SUPER_ADMIN" || json.student?.role === "CAFETERIA_ADMIN") {
-        window.location.href = "/admin";
-        return;
+
+      // Populate Class Schedule Pre-order recommendation
+      if (resSchedule.status === "fulfilled" && resSchedule.value.ok) {
+        const sJson = await resSchedule.value.json();
+        if (sJson.recommendations && sJson.recommendations.length > 0) {
+          setClassRecommendation(sJson.recommendations[0]);
+        }
       }
-      setData(json);
     } catch (err: any) {
       setError(err.message || "Failed to load dashboard.");
     } finally {
@@ -268,7 +332,7 @@ export default function HomePage() {
       {/* ── Loaded Content ── */}
       {data && !isLoading && (
         <>
-          {}
+          { }
           <div
             style={{
               background: "var(--surface)",
@@ -374,7 +438,7 @@ export default function HomePage() {
             </div>
           </div>
 
-          {}
+          { }
           <div className="space-y-3">
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <h2 style={{ fontSize: 20, fontWeight: 800, color: "var(--txt)", margin: 0 }}>
@@ -467,7 +531,7 @@ export default function HomePage() {
             </div>
           </div>
 
-          {}
+          { }
           <div
             style={{
               background: "linear-gradient(135deg, #0F766E 0%, #115E59 100%)",
@@ -532,8 +596,9 @@ export default function HomePage() {
               Live occupancy and status at Central Dining Hall.
             </p>
 
-            {/* Telemetry Metrics Grid */}
+            {/* Telemetry Metrics Grid: Available now, Busy, Sold out, Estimated waiting time */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {/* 1. Available now */}
               <div
                 style={{
                   background: "rgba(255,255,255,0.12)",
@@ -544,13 +609,14 @@ export default function HomePage() {
                 }}
               >
                 <div style={{ fontSize: 11, color: "rgba(255,255,255,0.7)", fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>
-                  <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#4ADE80", display: "inline-block" }} /> Cafeteria
+                  <ShoppingBag size={12} className="text-white/70" /> Available Now
                 </div>
                 <div style={{ fontSize: 18, fontWeight: 900, marginTop: 4, color: "#FFFFFF" }}>
-                  {data.radar.crowdLevel}
+                  {radarTelemetry?.availableNow ?? data.radar.availableFoodCount} ITEMS
                 </div>
               </div>
 
+              {/* 2. Busy */}
               <div
                 style={{
                   background: "rgba(255,255,255,0.12)",
@@ -561,13 +627,14 @@ export default function HomePage() {
                 }}
               >
                 <div style={{ fontSize: 11, color: "rgba(255,255,255,0.7)", fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>
-                  <Utensils size={12} className="text-white/70" /> Tables
+                  <span style={{ width: 8, height: 8, borderRadius: "50%", background: radarTelemetry?.crowdColor || data.radar.crowdColor, display: "inline-block" }} /> Busy Status
                 </div>
                 <div style={{ fontSize: 18, fontWeight: 900, marginTop: 4, color: "#FFFFFF" }}>
-                  {String(data.radar.availableTables).padStart(2, "0")} AVAILABLE
+                  {radarTelemetry?.crowdLevel ?? data.radar.crowdLevel}
                 </div>
               </div>
 
+              {/* 3. Sold out */}
               <div
                 style={{
                   background: "rgba(255,255,255,0.12)",
@@ -578,13 +645,14 @@ export default function HomePage() {
                 }}
               >
                 <div style={{ fontSize: 11, color: "rgba(255,255,255,0.7)", fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>
-                  <ShoppingBag size={12} className="text-white/70" /> Available Items
+                  <AlertCircle size={12} className="text-white/70" /> Sold Out
                 </div>
                 <div style={{ fontSize: 18, fontWeight: 900, marginTop: 4, color: "#FFFFFF" }}>
-                  {data.radar.availableFoodCount} AVAILABLE
+                  {radarTelemetry?.soldOut ?? 0} ITEMS
                 </div>
               </div>
 
+              {/* 4. Estimated waiting time */}
               <div
                 style={{
                   background: "rgba(255,255,255,0.12)",
@@ -595,16 +663,171 @@ export default function HomePage() {
                 }}
               >
                 <div style={{ fontSize: 11, color: "rgba(255,255,255,0.7)", fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>
-                  <Clock size={12} className="text-white/70" /> Avg. wait
+                  <Clock size={12} className="text-white/70" /> Est. Waiting Time
                 </div>
                 <div style={{ fontSize: 18, fontWeight: 900, marginTop: 4, color: "#FFFFFF" }}>
-                  {data.radar.avgWaitMinutes} MIN
+                  ~{radarTelemetry?.estimatedWaitMinutes ?? data.radar.avgWaitMinutes} MIN
                 </div>
               </div>
             </div>
           </div>
 
-          {}
+          {/* ── Phase 13 Innovation Quick Banners ── */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Group Ordering Banner */}
+            <Link
+              href="/group-orders"
+              style={{
+                background: "var(--surface)",
+                border: "1px solid var(--border)",
+                borderRadius: 20,
+                padding: "18px 20px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                textDecoration: "none",
+                boxShadow: "var(--shadow-card)",
+                transition: "all 150ms ease",
+              }}
+              className="hover:shadow-md hover:border-primary"
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                <div
+                  style={{
+                    width: 44,
+                    height: 44,
+                    borderRadius: 12,
+                    background: "rgba(15, 118, 110, 0.12)",
+                    color: "var(--primary)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                  }}
+                >
+                  <Users size={22} />
+                </div>
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <span style={{ fontSize: 15, fontWeight: 800, color: "var(--txt)" }}>Group Dine & Split Pay</span>
+                    <span style={{ fontSize: 10, fontWeight: 800, padding: "2px 6px", borderRadius: 99, background: "rgba(16, 185, 129, 0.12)", color: "#10B981" }}>NEW</span>
+                  </div>
+                  <div style={{ fontSize: 12, color: "var(--txt-muted)", marginTop: 2 }}>
+                    Create group cart, invite friends & split payment automatically
+                  </div>
+                </div>
+              </div>
+              <ChevronRight size={18} color="var(--txt-muted)" />
+            </Link>
+
+            {/* Class Schedule Pre-order Banner */}
+            <Link
+              href="/class-schedule"
+              style={{
+                background: "var(--surface)",
+                border: "1px solid var(--border)",
+                borderRadius: 20,
+                padding: "18px 20px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                textDecoration: "none",
+                boxShadow: "var(--shadow-card)",
+                transition: "all 150ms ease",
+              }}
+              className="hover:shadow-md hover:border-primary"
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                <div
+                  style={{
+                    width: 44,
+                    height: 44,
+                    borderRadius: 12,
+                    background: "rgba(59, 130, 246, 0.12)",
+                    color: "#3B82F6",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                  }}
+                >
+                  <Calendar size={22} />
+                </div>
+                <div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <span style={{ fontSize: 15, fontWeight: 800, color: "var(--txt)" }}>Class Pre-order Routine</span>
+                    <span style={{ fontSize: 10, fontWeight: 800, padding: "2px 6px", borderRadius: 99, background: "rgba(59, 130, 246, 0.12)", color: "#3B82F6" }}>SMART</span>
+                  </div>
+                  <div style={{ fontSize: 12, color: "var(--txt-muted)", marginTop: 2 }}>
+                    Sync lecture timetable — order before class or ready after class
+                  </div>
+                </div>
+              </div>
+              <ChevronRight size={18} color="var(--txt-muted)" />
+            </Link>
+          </div>
+
+          {/* Active Class Schedule Recommendation Alert (if applicable) */}
+          {classRecommendation && (
+            <div
+              style={{
+                background: "linear-gradient(135deg, rgba(15, 118, 110, 0.08) 0%, rgba(16, 185, 129, 0.08) 100%)",
+                border: "1px solid rgba(15, 118, 110, 0.25)",
+                borderRadius: 20,
+                padding: "16px 20px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                flexWrap: "wrap",
+                gap: 12,
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <div
+                  style={{
+                    width: 38,
+                    height: 38,
+                    borderRadius: 10,
+                    background: "var(--primary)",
+                    color: "#FFF",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Sparkles size={18} />
+                </div>
+                <div>
+                  <div style={{ fontWeight: 800, fontSize: 14, color: "var(--txt)" }}>
+                    “{classRecommendation.message}”
+                  </div>
+                  <div style={{ fontSize: 12, color: "var(--txt-muted)", marginTop: 2 }}>
+                    {classRecommendation.reason} {classRecommendation.suggestedTargetTime ? `• Expected by ${classRecommendation.suggestedTargetTime}` : ""}
+                  </div>
+                </div>
+              </div>
+
+              <Link
+                href="/explore"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                  padding: "8px 16px",
+                  borderRadius: 10,
+                  background: "var(--primary)",
+                  color: "#FFF",
+                  fontWeight: 700,
+                  fontSize: 12,
+                  textDecoration: "none",
+                }}
+              >
+                <ShoppingBag size={14} /> {classRecommendation.suggestedAction} <ArrowRight size={12} />
+              </Link>
+            </div>
+          )}
+
+          { }
           <div>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
               <h3 style={{ fontSize: 16, fontWeight: 800, color: "var(--txt)", margin: 0 }}>
@@ -685,26 +908,26 @@ export default function HomePage() {
                     <div style={{ fontSize: 11, color: "var(--txt-muted)", marginTop: 2 }}>
                       {dest.desc}
                     </div>
-                  <span
-                    style={{
-                      fontSize: 10,
-                      fontWeight: 700,
-                      marginTop: 8,
-                      padding: "2px 8px",
-                      borderRadius: 99,
-                      background: "var(--surface-2)",
-                      color: "var(--primary)",
-                    }}
-                  >
-                    {dest.badge}
-                  </span>
-                </Link>
-              );
-            })}
-          </div>
+                    <span
+                      style={{
+                        fontSize: 10,
+                        fontWeight: 700,
+                        marginTop: 8,
+                        padding: "2px 8px",
+                        borderRadius: 99,
+                        background: "var(--surface-2)",
+                        color: "var(--primary)",
+                      }}
+                    >
+                      {dest.badge}
+                    </span>
+                  </Link>
+                );
+              })}
+            </div>
           </div>
 
-          {}
+          { }
           <div>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
               <div>
@@ -927,7 +1150,7 @@ export default function HomePage() {
             )}
           </div>
 
-          {}
+          { }
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* 22. DineX Smart Pick */}
             <div
@@ -1111,18 +1334,23 @@ export default function HomePage() {
                   <div className="space-y-3">
                     <div style={{ background: "var(--surface-2)", padding: "14px", borderRadius: 14 }}>
                       <div style={{ fontSize: 11, color: "var(--txt-muted)", fontWeight: 700, textTransform: "uppercase" }}>
-                        YOUR QUEUE
+                        CURRENT QUEUE
                       </div>
                       <div style={{ fontSize: 17, fontWeight: 900, color: "var(--txt)", marginTop: 4 }}>
-                        08 orders ahead
+                        {String(smartQueueTelemetry?.totalOrders ?? 8).padStart(2, "0")} active orders in queue
                       </div>
-                      <div style={{ fontSize: 12, color: "var(--txt-2)", marginTop: 2 }}>
-                        Estimated wait: ~11 min • Kitchen: Normal
+                      <div style={{ fontSize: 12, color: "var(--txt-2)", marginTop: 4 }}>
+                        Estimated prep time: <strong>~{smartQueueTelemetry?.estimatedPrepMinutes ?? 11} min</strong>
                       </div>
                     </div>
-                    <p style={{ fontSize: 12, color: "var(--txt-muted)", margin: 0 }}>
-                      No waiting in long queues — order right from your smartphone.
-                    </p>
+                    <div style={{ background: "rgba(15, 118, 110, 0.08)", border: "1px solid rgba(15, 118, 110, 0.2)", borderRadius: 12, padding: "10px 12px", fontSize: 12, color: "var(--txt)" }}>
+                      <div style={{ fontSize: 10, fontWeight: 800, color: "var(--primary)", textTransform: "uppercase", marginBottom: 2 }}>
+                        SUGGESTED ORDER TIME
+                      </div>
+                      <div>
+                        {smartQueueTelemetry?.suggestedOrderTime ?? "Order now for minimum wait (~12 min)"}
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
@@ -1259,7 +1487,7 @@ export default function HomePage() {
             </div>
           </div>
 
-          {}
+          { }
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Student Discounts */}
             <div

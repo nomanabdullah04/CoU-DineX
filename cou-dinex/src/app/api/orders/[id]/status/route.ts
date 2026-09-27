@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
-import { OrderStatus, PaymentStatus, DeliveryStatus, NotificationType } from "@prisma/client";
+import { OrderStatus, PaymentStatus, DeliveryStatus, NotificationType, DeliveryType } from "@prisma/client";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -107,8 +107,17 @@ export async function PATCH(req: NextRequest, { params }: Props) {
       };
 
       let deliveryStatusUpdate: DeliveryStatus | undefined = undefined;
-      if (targetStatus === OrderStatus.PREPARING) deliveryStatusUpdate = DeliveryStatus.ASSIGNED;
-      if (targetStatus === OrderStatus.READY_FOR_PICKUP) deliveryStatusUpdate = DeliveryStatus.PICKED_UP;
+      const isCampusDelivery = order.deliveryType === DeliveryType.HALL_DELIVERY || order.deliveryType === DeliveryType.DEPARTMENT_DELIVERY;
+
+      if (targetStatus === OrderStatus.PREPARING) {
+        deliveryStatusUpdate = order.deliveryTracking?.agentId ? DeliveryStatus.ASSIGNED : DeliveryStatus.PENDING;
+      }
+      if (targetStatus === OrderStatus.READY_FOR_PICKUP) {
+        // For campus delivery, kitchen packaging is ready; rider must pick it up!
+        deliveryStatusUpdate = isCampusDelivery
+          ? (order.deliveryTracking?.agentId ? DeliveryStatus.ASSIGNED : DeliveryStatus.PENDING)
+          : DeliveryStatus.PICKED_UP;
+      }
       if (targetStatus === OrderStatus.OUT_FOR_DELIVERY) deliveryStatusUpdate = DeliveryStatus.ON_THE_WAY;
       if (targetStatus === OrderStatus.DELIVERED) deliveryStatusUpdate = DeliveryStatus.DELIVERED;
 
@@ -129,11 +138,11 @@ export async function PATCH(req: NextRequest, { params }: Props) {
 
       // 2.4 Notify student of status update
       const statusTitleMap: Record<string, string> = {
-        CONFIRMED: "Order Confirmed!",
+        CONFIRMED: "Order Confirmed",
         PREPARING: "Kitchen Cooking Started",
-        READY_FOR_PICKUP: "Your Meal is Ready!",
-        OUT_FOR_DELIVERY: "Food Out for Delivery!",
-        DELIVERED: "Order Completed!",
+        READY_FOR_PICKUP: isCampusDelivery ? "Food Prepared & Packaged" : "Order Ready for Pickup",
+        OUT_FOR_DELIVERY: "Food Out for Delivery",
+        DELIVERED: "Order Delivered",
         CANCELLED: "Order Cancelled",
       };
 

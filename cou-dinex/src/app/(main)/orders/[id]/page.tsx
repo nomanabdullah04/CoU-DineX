@@ -592,11 +592,20 @@ export default function OrderTrackingPage() {
           }}
         >
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
-            <h2 style={{ fontSize: 17, fontWeight: 800, color: "var(--txt)", margin: 0 }}>
-              Visual Order Timeline &amp; Timestamps
+            <h2 style={{ fontSize: 16, fontWeight: 800, color: "var(--txt)", margin: 0 }}>
+              Order Status
             </h2>
-            <span style={{ fontSize: 12, color: "var(--txt-muted)", display: "flex", alignItems: "center", gap: 4 }}>
-              <Clock size={13} /> Live auto-update active
+            <span style={{ fontSize: 12, color: "var(--txt-muted)", display: "flex", alignItems: "center", gap: 6 }}>
+              <span
+                style={{
+                  width: 7,
+                  height: 7,
+                  borderRadius: "50%",
+                  background: isDelivered ? "#10B981" : "#F59E0B",
+                  display: "inline-block",
+                }}
+              />
+              {isDelivered ? "Completed" : "Live update"}
             </span>
           </div>
 
@@ -693,34 +702,94 @@ export default function OrderTrackingPage() {
             })}
           </div>
 
-          {/* Cancellation Allowed / Disallowed Policy Note */}
-          <div
-            style={{
-              marginTop: 20,
-              padding: "10px 14px",
-              borderRadius: 12,
-              background: "var(--surface-2)",
-              fontSize: 12,
-              color: "var(--txt-muted)",
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-            }}
-          >
-            <Info size={15} color="var(--primary)" />
-            {order.canCancel ? (
-              <span>Order can be cancelled now. Once the kitchen starts preparing, cancellation is locked.</span>
-            ) : isDelivered ? (
-              <span>Order has been successfully fulfilled.</span>
-            ) : (
-              <span>Cooking/delivery is in progress. Order can no longer be cancelled.</span>
-            )}
-          </div>
         </div>
       )}
 
-      {/* CAMPUS DELIVERY & SECURE HANDOVER OTP SECTION */}
-      {!isCancelled && (order.deliveryType === "HALL_DELIVERY" || order.deliveryType === "DEPARTMENT_DELIVERY" || order.deliveryType === "CAFETERIA_PICKUP") && (
+      {/* ORDER DELIVERED COMPLETION BANNER (FOODPANDA / FOODI STYLE) */}
+      {isDelivered && (
+        <div
+          style={{
+            background: "linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, rgba(5, 150, 105, 0.04) 100%)",
+            border: "1px solid rgba(16, 185, 129, 0.25)",
+            borderRadius: 22,
+            padding: "24px 22px",
+            marginBottom: 24,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            flexWrap: "wrap",
+            gap: 16,
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+            <div
+              style={{
+                width: 48,
+                height: 48,
+                borderRadius: 16,
+                background: "#10B981",
+                color: "#FFFFFF",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
+                boxShadow: "0 6px 16px rgba(16, 185, 129, 0.3)",
+              }}
+            >
+              <CheckCircle2 size={26} />
+            </div>
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <h3 style={{ fontSize: 17, fontWeight: 800, margin: 0, color: "var(--txt)" }}>
+                  {order.deliveryType === "CAFETERIA_PICKUP" ? "Order Picked Up!" : "Order Delivered!"}
+                </h3>
+                <span
+                  style={{
+                    background: "#10B981",
+                    color: "#FFFFFF",
+                    fontSize: 10,
+                    fontWeight: 800,
+                    padding: "2px 8px",
+                    borderRadius: 999,
+                    letterSpacing: "0.05em",
+                    textTransform: "uppercase",
+                  }}
+                >
+                  Completed
+                </span>
+              </div>
+              <p style={{ margin: "4px 0 0 0", fontSize: 13, color: "var(--txt-muted)" }}>
+                {order.deliveryType === "CAFETERIA_PICKUP"
+                  ? "Collected from cafeteria counter. Enjoy your meal!"
+                  : `Successfully handed over at ${getDestinationDisplay()}. Enjoy your meal!`}
+              </p>
+            </div>
+          </div>
+
+          <Link
+            href="/menu"
+            style={{
+              padding: "10px 20px",
+              borderRadius: 12,
+              background: "var(--primary)",
+              color: "#FFFFFF",
+              fontSize: 13,
+              fontWeight: 700,
+              textDecoration: "none",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 8,
+              boxShadow: "0 4px 12px rgba(255, 107, 0, 0.2)",
+            }}
+          >
+            <ShoppingBag size={15} />
+            <span>Order Again</span>
+          </Link>
+        </div>
+      )}
+
+      {/* ACTIVE CAMPUS DELIVERY & SECURE HANDOVER OTP SECTION (HIDDEN ONCE DELIVERED) */}
+      {!isDelivered && !isCancelled && (order.deliveryType === "HALL_DELIVERY" || order.deliveryType === "DEPARTMENT_DELIVERY" || order.deliveryType === "CAFETERIA_PICKUP") && (
         <div style={{ display: "flex", flexDirection: "column", gap: 20, marginBottom: 24 }}>
           {/* SECURE HANDOVER OTP CARD */}
           {(order.deliveryTracking?.deliveryOtp || order.deliveryTracking?.pickupOtp) && (
@@ -856,7 +925,7 @@ export default function OrderTrackingPage() {
             </div>
           )}
 
-          {/* ASSIGNED DELIVERY RIDER CARD */}
+          {/* ASSIGNED DELIVERY RIDER CARD (ACTIVE DELIVERIES ONLY) */}
           {order.deliveryTracking?.agent && (
             <div
               style={{
@@ -924,7 +993,7 @@ export default function OrderTrackingPage() {
             </div>
           )}
 
-          {/* INTERACTIVE CAMPUS DELIVERY MAP */}
+          {/* INTERACTIVE CAMPUS DELIVERY MAP (ACTIVE DELIVERIES ONLY) */}
           <CampusDeliveryMap
             deliveryType={order.deliveryType as any}
             destinationName={getDestinationDisplay()}

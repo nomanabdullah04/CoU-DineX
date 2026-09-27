@@ -139,8 +139,8 @@ export async function GET(req: NextRequest, { params }: Props) {
       },
       {
         key: "READY_FOR_PICKUP",
-        label: "Ready",
-        description: isDelivery ? "Packaged for delivery" : "Ready at cafeteria counter",
+        label: isDelivery ? "Packaged" : "Ready",
+        description: isDelivery ? "Kitchen packaged • Awaiting rider" : "Ready at cafeteria counter",
         timestamp: readyLog || (isReadyOrLater ? (order.status === "READY_FOR_PICKUP" ? order.updatedAt.toISOString() : new Date(readyTimeMs).toISOString()) : new Date(readyTimeMs).toISOString()),
         completed: isReadyOrLater,
         estimated: !isReadyOrLater && !readyLog,
@@ -167,10 +167,23 @@ export async function GET(req: NextRequest, { params }: Props) {
       },
     ];
 
+    // Sanitize delivery tracking: once delivered, terminate active tracking and hide rider contact
+    const deliveryTracking = order.deliveryTracking
+      ? {
+          ...order.deliveryTracking,
+          agent: isDelivered ? null : order.deliveryTracking.agent,
+          currentLatitude: isDelivered ? null : order.deliveryTracking.currentLatitude,
+          currentLongitude: isDelivered ? null : order.deliveryTracking.currentLongitude,
+          deliveryOtp: isDelivered ? null : order.deliveryTracking.deliveryOtp,
+          pickupOtp: isDelivered ? null : order.deliveryTracking.pickupOtp,
+        }
+      : null;
+
     return NextResponse.json({
       success: true,
       order: {
         ...order,
+        deliveryTracking,
         canCancel,
         timeline,
       },

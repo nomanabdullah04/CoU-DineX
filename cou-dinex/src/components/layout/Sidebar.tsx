@@ -5,17 +5,19 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Home, Compass, ShoppingBag, Map, Gift, User,
-  Settings, ChevronRight,
+  Settings, ChevronRight, Users, Calendar,
 } from "lucide-react";
 import { Logo } from "@/components/ui/Logo";
 
 const NAV_ITEMS = [
-  { label: "Home",       href: "/home",    icon: Home        },
-  { label: "Explore",    href: "/explore", icon: Compass     },
-  { label: "Orders",     href: "/orders",  icon: ShoppingBag },
-  { label: "Campus Map", href: "/map",     icon: Map         },
-  { label: "Rewards",    href: "/rewards", icon: Gift        },
-  { label: "Profile",    href: "/profile", icon: User        },
+  { label: "Home",          href: "/home",           icon: Home        },
+  { label: "Explore",       href: "/explore",        icon: Compass     },
+  { label: "Orders",        href: "/orders",         icon: ShoppingBag },
+  { label: "Group Orders",  href: "/group-orders",   icon: Users       },
+  { label: "Class Routine", href: "/class-schedule", icon: Calendar    },
+  { label: "Campus Map",    href: "/map",            icon: Map         },
+  { label: "Rewards & Eco", href: "/rewards",        icon: Gift        },
+  { label: "Profile",       href: "/profile",        icon: User        },
 ] as const;
 
 export function Sidebar() {

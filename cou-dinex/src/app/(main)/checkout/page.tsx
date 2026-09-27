@@ -159,8 +159,8 @@ export default function CheckoutPage() {
     destinationType === "HALL_DELIVERY"
       ? 15
       : destinationType === "DEPARTMENT_DELIVERY"
-      ? 10
-      : 0;
+        ? 10
+        : 0;
 
   const totalAmount = subtotal + deliveryFee;
 
@@ -1110,8 +1110,8 @@ export default function CheckoutPage() {
                 {submitting
                   ? "Placing Order..."
                   : selectedPaymentMethod === PaymentMethod.CASH_ON_DELIVERY
-                  ? "Confirm & Place Order (Pay Cash)"
-                  : `Proceed to Demo Payment (৳${totalAmount.toFixed(0)})`}
+                    ? "Confirm & Place Order (Pay Cash)"
+                    : `Proceed to Demo Payment (৳${totalAmount.toFixed(0)})`}
               </span>
               {!submitting && <ArrowRight size={18} />}
             </button>
