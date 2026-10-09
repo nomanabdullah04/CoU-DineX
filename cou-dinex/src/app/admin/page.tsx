@@ -1,651 +1,467 @@
 "use client";
 
-import * as React from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { AdminSidebar } from "@/components/admin/AdminSidebar";
+import { AnalyticsSection } from "@/components/admin/AnalyticsSection";
+import { SecuritySection } from "@/components/admin/SecuritySection";
+import { StudentsSection } from "@/components/admin/StudentsSection";
+import { StaffSection } from "@/components/admin/StaffSection";
+import { OrdersSection } from "@/components/admin/OrdersSection";
+import { InventorySection } from "@/components/admin/InventorySection";
+import { PaymentsSection } from "@/components/admin/PaymentsSection";
+import { ComplaintsSection } from "@/components/admin/ComplaintsSection";
+import { RewardsSection } from "@/components/admin/RewardsSection";
+import { NotificationsSection } from "@/components/admin/NotificationsSection";
+import { CategoriesSection } from "@/components/admin/CategoriesSection";
+import { SettingsSection } from "@/components/admin/SettingsSection";
+import { ReviewsSection } from "@/components/admin/ReviewsSection";
+import { StatMetricCard } from "@/components/admin/AdminCharts";
 import {
+  Users,
   ShieldCheck,
   UserCheck,
-  Clock,
-  CheckCircle2,
-  XCircle,
-  HelpCircle,
-  ArrowRight,
-  LogOut,
-  Users,
-  Search,
+  UtensilsCrossed,
+  Tags,
+  ShoppingBag,
   ChefHat,
+  Bike,
+  PackageOpen,
+  CreditCard,
+  Star,
+  MessageSquareWarning,
+  Award,
+  BellRing,
+  LineChart,
+  LockKeyhole,
+  Sliders,
+  ArrowRight,
+  TrendingUp,
+  Download,
+  AlertTriangle,
 } from "lucide-react";
-import { Logo } from "@/components/ui/Logo";
 
-interface VerificationCounts {
-  all: number;
-  pending: number;
-  approved: number;
-  rejected: number;
-  moreInfo: number;
-}
-
-interface StudentItem {
-  id: string;
-  universityStudentId: string;
-  session: string;
-  verificationStatus: string;
-  createdAt: string;
-  user: {
-    fullName: string;
-    email: string;
-    phone: string;
-  };
-  department: {
-    name: string;
-    code: string;
-  };
-}
-
-export default function AdminDashboardPage() {
+export default function CompleteAdminDashboard() {
   const router = useRouter();
-  const [counts, setCounts] = React.useState<VerificationCounts>({
-    all: 0,
-    pending: 0,
-    approved: 0,
-    rejected: 0,
-    moreInfo: 0,
-  });
-  const [recentStudents, setRecentStudents] = React.useState<StudentItem[]>([]);
-  const [loading, setLoading] = React.useState(true);
+  const [activeSection, setActiveSection] = useState<string>("overview");
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [overviewData, setOverviewData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
-  React.useEffect(() => {
-    async function loadData() {
+  useEffect(() => {
+    async function loadInitialAdminData() {
       try {
-        const res = await fetch("/api/admin/verifications");
-        if (res.status === 401 || res.status === 403) {
+        const [authRes, analyticsRes] = await Promise.all([
+          fetch("/api/auth/me"),
+          fetch("/api/admin/analytics?range=30d"),
+        ]);
+
+        if (authRes.status === 401 || authRes.status === 403) {
           router.push("/login?callbackUrl=/admin");
           return;
         }
-        const data = await res.json();
-        if (data.counts) {
-          setCounts(data.counts);
+
+        const authJson = await authRes.json();
+        const role = authJson.user?.role;
+        if (role !== "SUPER_ADMIN" && role !== "CAFETERIA_ADMIN") {
+          router.push("/login?callbackUrl=/admin");
+          return;
         }
-        if (data.students) {
-          setRecentStudents(data.students.slice(0, 5));
+
+        setCurrentUser(authJson.user);
+
+        if (analyticsRes.ok) {
+          const analyticsJson = await analyticsRes.json();
+          setOverviewData(analyticsJson);
         }
       } catch (err) {
-        console.error("Failed to load admin data:", err);
+        console.error("Failed to load admin dashboard:", err);
       } finally {
         setLoading(false);
       }
     }
-    loadData();
+
+    loadInitialAdminData();
   }, [router]);
 
-  async function handleLogout() {
-    await fetch("/api/auth/logout", { method: "POST" });
-    router.push("/login");
-    router.refresh();
+  if (loading) {
+    return (
+      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#F8FAFC", color: "#64748B", fontFamily: "var(--font-sans), sans-serif" }}>
+        Verifying administrative credentials & initializing campus command center...
+      </div>
+    );
   }
+
+  const summary = overviewData?.summary || {};
 
   return (
     <div
       style={{
+        display: "flex",
         minHeight: "100vh",
         background: "#F8FAFC",
         color: "#0F172A",
         fontFamily: "var(--font-sans), sans-serif",
       }}
     >
-      {/* Top Global Admin Bar */}
-      <header
-        style={{
-          background: "#FFFFFF",
-          borderBottom: "1px solid #E2E8F0",
-          padding: "16px 28px",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          boxShadow: "0 2px 6px rgba(0,0,0,0.02)",
+      {/* 18-Section Navigation Sidebar */}
+      <AdminSidebar
+        activeSection={activeSection}
+        onSelectSection={setActiveSection}
+        pendingCounts={{
+          verifications: summary.pendingVerificationsCount,
+          complaints: summary.pendingComplaintsCount,
+          lowStock: summary.lowStockInventoryCount,
         }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <Logo size="sm" />
-            <span
+        currentUser={currentUser}
+      />
+
+      {/* Main Content Viewport */}
+      <main style={{ flex: 1, padding: "28px 32px", overflowY: "auto", maxWidth: 1400 }}>
+        {/* ================= 1. OVERVIEW SECTION ================= */}
+        {activeSection === "overview" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+            {/* Header */}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 14 }}>
+              <div>
+                <h1 style={{ fontSize: 24, fontWeight: 900, margin: 0, color: "#0F172A" }}>
+                  Executive Campus Command Overview
+                </h1>
+                <p style={{ margin: "4px 0 0", fontSize: 13, color: "#64748B" }}>
+                  Centralized command console for Comilla University cafeteria operations, order traffic, and student security.
+                </p>
+              </div>
+
+              <div style={{ display: "flex", gap: 10 }}>
+                <button
+                  onClick={() => window.open("/api/admin/export?type=orders&format=csv", "_blank")}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 6,
+                    padding: "9px 16px",
+                    borderRadius: 12,
+                    background: "#0F766E",
+                    color: "#FFFFFF",
+                    fontSize: 13,
+                    fontWeight: 700,
+                    border: "none",
+                    cursor: "pointer",
+                    boxShadow: "0 2px 6px rgba(15, 118, 110, 0.2)",
+                  }}
+                >
+                  <Download size={15} />
+                  <span>Export Master Data</span>
+                </button>
+              </div>
+            </div>
+
+            {/* High-Level Pulse Metrics */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16 }}>
+              <StatMetricCard
+                label="Total Orders"
+                value={summary.totalOrders || 0}
+                subtext={`${summary.totalDeliveredOrders || 0} completed`}
+                icon={<ShoppingBag size={22} />}
+                accentColor="#FF6B00"
+              />
+
+              <StatMetricCard
+                label="Delivered Revenue"
+                value={`৳${(summary.totalRevenue || 0).toLocaleString()}`}
+                subtext="Total settled revenue"
+                icon={<TrendingUp size={22} />}
+                accentColor="#059669"
+              />
+
+              <StatMetricCard
+                label="Verified Students"
+                value={summary.totalStudents || 0}
+                subtext={`${summary.pendingVerificationsCount || 0} pending review`}
+                icon={<UserCheck size={22} />}
+                accentColor="#3B82F6"
+              />
+
+              <StatMetricCard
+                label="Low Stock Alerts"
+                value={summary.lowStockInventoryCount || 0}
+                subtext="Items need restocking"
+                icon={<AlertTriangle size={22} />}
+                accentColor="#EF4444"
+              />
+            </div>
+
+            {/* Quick Actions Shortcuts to Specialized Dashboards */}
+            <div
               style={{
-                padding: "2px 8px",
-                borderRadius: 6,
-                background: "#0F766E",
-                color: "#FFFFFF",
-                fontSize: 11,
-                fontWeight: 700,
-                letterSpacing: "0.5px",
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+                gap: 16,
               }}
             >
-              ADMIN
-            </span>
-            <span style={{ fontSize: 12, color: "#64748B", margin: 0 }}>
-              • Campus Dining Administration & Student Verification OS
-            </span>
-          </div>
-        </div>
-
-        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-          <Link
-            href="/admin/verifications"
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 6,
-              padding: "8px 16px",
-              borderRadius: 10,
-              background: "#F0FDFA",
-              color: "#0F766E",
-              fontSize: 13,
-              fontWeight: 600,
-              textDecoration: "none",
-              border: "1px solid #CCFBF1",
-            }}
-          >
-            <UserCheck size={16} />
-            <span>Verification Queue</span>
-            {counts.pending > 0 && (
-              <span
+              {/* Direct Link to Live Kitchen KDS */}
+              <Link
+                href="/kitchen"
+                target="_blank"
                 style={{
-                  marginLeft: 4,
-                  padding: "2px 7px",
-                  borderRadius: 10,
-                  background: "#F59E0B",
-                  color: "#FFFFFF",
-                  fontSize: 11,
-                  fontWeight: 700,
+                  textDecoration: "none",
+                  background: "#FFFFFF",
+                  border: "1px solid #E2E8F0",
+                  borderRadius: 18,
+                  padding: "20px 22px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.02)",
+                  transition: "transform 0.15s ease",
                 }}
               >
-                {counts.pending}
-              </span>
-            )}
-          </Link>
+                <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                  <div style={{ width: 44, height: 44, borderRadius: 14, background: "#0F766E15", color: "#0F766E", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <ChefHat size={22} />
+                  </div>
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: "#0F172A" }}>
+                      Kitchen Display (KDS)
+                    </h3>
+                    <p style={{ margin: "2px 0 0", fontSize: 12, color: "#64748B" }}>
+                      Real-time chef line & prep timer
+                    </p>
+                  </div>
+                </div>
+                <ArrowRight size={18} color="#0F766E" />
+              </Link>
 
-          <Link
-            href="/kitchen"
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 6,
-              padding: "8px 16px",
-              borderRadius: 10,
-              background: "#0F766E",
-              color: "#FFFFFF",
-              fontSize: 13,
-              fontWeight: 700,
-              textDecoration: "none",
-              boxShadow: "0 2px 6px rgba(15, 118, 110, 0.2)",
-            }}
-          >
-            <ChefHat size={16} />
-            <span>Kitchen Display (KDS)</span>
-          </Link>
+              {/* Direct Link to Live Delivery Fleet */}
+              <Link
+                href="/delivery"
+                target="_blank"
+                style={{
+                  textDecoration: "none",
+                  background: "#FFFFFF",
+                  border: "1px solid #E2E8F0",
+                  borderRadius: 18,
+                  padding: "20px 22px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.02)",
+                  transition: "transform 0.15s ease",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                  <div style={{ width: 44, height: 44, borderRadius: 14, background: "#FF6B0015", color: "#FF6B00", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <Bike size={22} />
+                  </div>
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: "#0F172A" }}>
+                      Delivery Rider Console
+                    </h3>
+                    <p style={{ margin: "2px 0 0", fontSize: 12, color: "#64748B" }}>
+                      Campus courier dispatch & OTPs
+                    </p>
+                  </div>
+                </div>
+                <ArrowRight size={18} color="#FF6B00" />
+              </Link>
 
-          <button
-            onClick={handleLogout}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 6,
-              padding: "8px 14px",
-              borderRadius: 10,
-              background: "#FFFFFF",
-              border: "1px solid #CBD5E1",
-              color: "#64748B",
-              fontSize: 13,
-              fontWeight: 600,
-              cursor: "pointer",
-            }}
-          >
-            <LogOut size={16} />
-            <span>Sign Out</span>
-          </button>
-        </div>
-      </header>
+              {/* Direct Link to Student Verification Queue */}
+              <button
+                onClick={() => setActiveSection("verifications")}
+                style={{
+                  background: "#FFFFFF",
+                  border: "1px solid #E2E8F0",
+                  borderRadius: 18,
+                  padding: "20px 22px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.02)",
+                  cursor: "pointer",
+                  textAlign: "left",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                  <div style={{ width: 44, height: 44, borderRadius: 14, background: "#3B82F615", color: "#3B82F6", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <UserCheck size={22} />
+                  </div>
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: 16, fontWeight: 800, color: "#0F172A" }}>
+                      Verification Queue
+                    </h3>
+                    <p style={{ margin: "2px 0 0", fontSize: 12, color: "#64748B" }}>
+                      {summary.pendingVerificationsCount || 0} students pending
+                    </p>
+                  </div>
+                </div>
+                <ArrowRight size={18} color="#3B82F6" />
+              </button>
+            </div>
 
-      {/* Main Content */}
-      <main style={{ maxWidth: 1180, margin: "0 auto", padding: "32px 24px" }}>
-        {/* Welcome Section */}
-        <div style={{ marginBottom: 32 }}>
-          <h1 style={{ fontSize: 26, fontWeight: 800, margin: "0 0 6px 0", color: "#0F172A" }}>
-            Admin Dashboard
-          </h1>
-          <p style={{ fontSize: 14, color: "#64748B", margin: 0 }}>
-            Manage Comilla University student admissions to the campus dining ecosystem.
-          </p>
-        </div>
-
-        {/* 4 Metric Cards (SRS specifications) */}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
-            gap: 20,
-            marginBottom: 36,
-          }}
-        >
-          {/* Pending Verifications */}
-          <Link
-            href="/admin/verifications?status=PENDING"
-            style={{
-              textDecoration: "none",
-              background: "#FFFFFF",
-              border: "1px solid #FEF3C7",
-              borderRadius: 20,
-              padding: "22px 20px",
-              boxShadow: "0 4px 16px rgba(245, 158, 11, 0.08)",
-              display: "flex",
-              alignItems: "center",
-              gap: 16,
-              transition: "transform 0.2s, box-shadow 0.2s",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = "translateY(-3px)";
-              e.currentTarget.style.boxShadow = "0 8px 24px rgba(245, 158, 11, 0.16)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = "translateY(0)";
-              e.currentTarget.style.boxShadow = "0 4px 16px rgba(245, 158, 11, 0.08)";
-            }}
-          >
-            <div
-              style={{
-                width: 52,
-                height: 52,
-                borderRadius: 14,
-                background: "#FEF3C7",
-                color: "#B45309",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <Clock size={28} />
-            </div>
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 600, color: "#92400E" }}>Pending Review</div>
-              <div style={{ fontSize: 28, fontWeight: 800, color: "#0F172A", lineHeight: 1.2 }}>
-                {loading ? "..." : counts.pending}
-              </div>
-              <div style={{ fontSize: 12, color: "#B45309" }}>Action required</div>
-            </div>
-          </Link>
-
-          {/* Approved Students */}
-          <Link
-            href="/admin/verifications?status=APPROVED"
-            style={{
-              textDecoration: "none",
-              background: "#FFFFFF",
-              border: "1px solid #DCFCE7",
-              borderRadius: 20,
-              padding: "22px 20px",
-              boxShadow: "0 4px 16px rgba(22, 163, 74, 0.08)",
-              display: "flex",
-              alignItems: "center",
-              gap: 16,
-              transition: "transform 0.2s, box-shadow 0.2s",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = "translateY(-3px)";
-              e.currentTarget.style.boxShadow = "0 8px 24px rgba(22, 163, 74, 0.16)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = "translateY(0)";
-              e.currentTarget.style.boxShadow = "0 4px 16px rgba(22, 163, 74, 0.08)";
-            }}
-          >
-            <div
-              style={{
-                width: 52,
-                height: 52,
-                borderRadius: 14,
-                background: "#DCFCE7",
-                color: "#16A34A",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <CheckCircle2 size={28} />
-            </div>
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 600, color: "#15803D" }}>Approved Students</div>
-              <div style={{ fontSize: 28, fontWeight: 800, color: "#0F172A", lineHeight: 1.2 }}>
-                {loading ? "..." : counts.approved}
-              </div>
-              <div style={{ fontSize: 12, color: "#16A34A" }}>Full dining access</div>
-            </div>
-          </Link>
-
-          {/* More Information Required */}
-          <Link
-            href="/admin/verifications?status=MORE_INFO_REQUIRED"
-            style={{
-              textDecoration: "none",
-              background: "#FFFFFF",
-              border: "1px solid #E0E7FF",
-              borderRadius: 20,
-              padding: "22px 20px",
-              boxShadow: "0 4px 16px rgba(79, 70, 229, 0.06)",
-              display: "flex",
-              alignItems: "center",
-              gap: 16,
-              transition: "transform 0.2s, box-shadow 0.2s",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = "translateY(-3px)";
-              e.currentTarget.style.boxShadow = "0 8px 24px rgba(79, 70, 229, 0.14)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = "translateY(0)";
-              e.currentTarget.style.boxShadow = "0 4px 16px rgba(79, 70, 229, 0.06)";
-            }}
-          >
-            <div
-              style={{
-                width: 52,
-                height: 52,
-                borderRadius: 14,
-                background: "#E0E7FF",
-                color: "#4F46E5",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <HelpCircle size={28} />
-            </div>
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 600, color: "#4338CA" }}>More Info Needed</div>
-              <div style={{ fontSize: 28, fontWeight: 800, color: "#0F172A", lineHeight: 1.2 }}>
-                {loading ? "..." : counts.moreInfo}
-              </div>
-              <div style={{ fontSize: 12, color: "#4F46E5" }}>Awaiting student edit</div>
-            </div>
-          </Link>
-
-          {/* Rejected Students */}
-          <Link
-            href="/admin/verifications?status=REJECTED"
-            style={{
-              textDecoration: "none",
-              background: "#FFFFFF",
-              border: "1px solid #FEE2E2",
-              borderRadius: 20,
-              padding: "22px 20px",
-              boxShadow: "0 4px 16px rgba(220, 38, 38, 0.06)",
-              display: "flex",
-              alignItems: "center",
-              gap: 16,
-              transition: "transform 0.2s, box-shadow 0.2s",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = "translateY(-3px)";
-              e.currentTarget.style.boxShadow = "0 8px 24px rgba(220, 38, 38, 0.14)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = "translateY(0)";
-              e.currentTarget.style.boxShadow = "0 4px 16px rgba(220, 38, 38, 0.06)";
-            }}
-          >
-            <div
-              style={{
-                width: 52,
-                height: 52,
-                borderRadius: 14,
-                background: "#FEE2E2",
-                color: "#DC2626",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <XCircle size={28} />
-            </div>
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 600, color: "#B91C1C" }}>Rejected</div>
-              <div style={{ fontSize: 28, fontWeight: 800, color: "#0F172A", lineHeight: 1.2 }}>
-                {loading ? "..." : counts.rejected}
-              </div>
-              <div style={{ fontSize: 12, color: "#DC2626" }}>Correction allowed</div>
-            </div>
-          </Link>
-        </div>
-
-        {/* Quick Launch Banner: Student Verification Portal */}
-        <div
-          style={{
-            background: "linear-gradient(135deg, #0F766E 0%, #0D9488 100%)",
-            borderRadius: 20,
-            padding: "26px 30px",
-            color: "#FFFFFF",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            marginBottom: 20,
-            boxShadow: "0 10px 25px rgba(15, 118, 110, 0.22)",
-          }}
-        >
-          <div>
-            <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "4px 10px", borderRadius: 20, background: "rgba(255,255,255,0.18)", fontSize: 11, fontWeight: 700, letterSpacing: "0.05em", textTransform: "uppercase", marginBottom: 8, color: "#FFFFFF" }}>
-              Identity & Admission
-            </div>
-            <h2 style={{ fontSize: 22, fontWeight: 800, margin: "0 0 6px 0", color: "#FFFFFF", letterSpacing: "-0.01em" }}>
-              Student Verification Portal
-            </h2>
-            <p style={{ fontSize: 13, color: "rgba(255, 255, 255, 0.92)", margin: 0, maxWidth: 620, lineHeight: 1.5 }}>
-              Review registration requests with 8-point university identity check: Name, University ID, Department, Session, Email, Phone, and Registration Timestamp.
-            </p>
+            {/* Embedded Live Database Analytics Component in Overview */}
+            <AnalyticsSection />
           </div>
+        )}
 
-          <Link
-            href="/admin/verifications"
-            id="open-verification-portal-btn"
-            style={{
-              padding: "12px 24px",
-              borderRadius: 12,
-              background: "#FFFFFF",
-              color: "#0F766E",
-              fontWeight: 700,
-              fontSize: 14,
-              textDecoration: "none",
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 8,
-              boxShadow: "0 4px 14px rgba(0,0,0,0.12)",
-              flexShrink: 0,
-              transition: "transform 0.15s ease",
-            }}
-          >
-            <span>Open Verification Table</span>
-            <ArrowRight size={16} />
-          </Link>
-        </div>
+        {/* ================= 2. STUDENTS SECTION ================= */}
+        {activeSection === "students" && <StudentsSection />}
 
-        {/* Menu Management Banner */}
-        <div
-          style={{
-            background: "linear-gradient(135deg, #EA580C 0%, #F59E0B 100%)",
-            borderRadius: 20,
-            padding: "26px 30px",
-            color: "#FFFFFF",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            marginBottom: 36,
-            boxShadow: "0 10px 25px rgba(234, 88, 12, 0.22)",
-          }}
-        >
-          <div>
-            <div style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "4px 10px", borderRadius: 20, background: "rgba(255,255,255,0.22)", fontSize: 11, fontWeight: 700, letterSpacing: "0.05em", textTransform: "uppercase", marginBottom: 8, color: "#FFFFFF" }}>
-              Phase 6 Feature
+        {/* ================= 3. STAFF SECTION ================= */}
+        {activeSection === "staff" && <StaffSection />}
+
+        {/* ================= 4. VERIFICATIONS SECTION ================= */}
+        {activeSection === "verifications" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <h2 style={{ fontSize: 20, fontWeight: 800, margin: 0 }}>Student ID Verification Console</h2>
+              <Link
+                href="/admin/verifications"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                  padding: "8px 16px",
+                  borderRadius: 10,
+                  background: "#0F766E",
+                  color: "#FFFFFF",
+                  fontSize: 13,
+                  fontWeight: 700,
+                  textDecoration: "none",
+                }}
+              >
+                Open Full Verification Queue Page <ArrowRight size={14} />
+              </Link>
             </div>
-            <h2 style={{ fontSize: 22, fontWeight: 800, margin: "0 0 6px 0", color: "#FFFFFF", letterSpacing: "-0.01em" }}>
-              Food Menu Management
-            </h2>
-            <p style={{ fontSize: 13, color: "rgba(255, 255, 255, 0.94)", margin: 0, maxWidth: 620, lineHeight: 1.5 }}>
-              Create, edit, and manage cafeteria menu items. Control prices, availability, stock levels, categories, and daily specials.
-            </p>
+            <StudentsSection />
           </div>
+        )}
 
-          <Link
-            href="/admin/menu"
-            id="open-menu-management-btn"
-            style={{
-              padding: "12px 24px",
-              borderRadius: 12,
-              background: "#FFFFFF",
-              color: "#EA580C",
-              fontWeight: 700,
-              fontSize: 14,
-              textDecoration: "none",
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 8,
-              boxShadow: "0 4px 14px rgba(0,0,0,0.12)",
-              flexShrink: 0,
-              transition: "transform 0.15s ease",
-            }}
-          >
-            <span>Manage Menu</span>
-            <ArrowRight size={16} />
-          </Link>
-        </div>
-
-
-
-        {/* Recent Registrations Preview */}
-        <div
-          style={{
-            background: "#FFFFFF",
-            border: "1px solid #E2E8F0",
-            borderRadius: 20,
-            padding: "24px",
-            boxShadow: "0 4px 16px rgba(0,0,0,0.03)",
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              marginBottom: 20,
-            }}
-          >
-            <div>
-              <h3 style={{ fontSize: 17, fontWeight: 700, margin: "0 0 4px 0", color: "#0F172A" }}>
-                Recent Student Registrations
-              </h3>
-              <p style={{ fontSize: 13, color: "#64748B", margin: 0 }}>
-                Latest students who submitted university credentials
-              </p>
+        {/* ================= 5. MENU SECTION ================= */}
+        {activeSection === "menu" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <h2 style={{ fontSize: 20, fontWeight: 800, margin: 0 }}>Campus Menu Management</h2>
+              <Link
+                href="/admin/menu"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                  padding: "8px 16px",
+                  borderRadius: 10,
+                  background: "#FF6B00",
+                  color: "#FFFFFF",
+                  fontSize: 13,
+                  fontWeight: 700,
+                  textDecoration: "none",
+                }}
+              >
+                Open Menu Editor & Pricing Tool <ArrowRight size={14} />
+              </Link>
             </div>
-
-            <Link
-              href="/admin/verifications"
-              style={{
-                fontSize: 13,
-                fontWeight: 600,
-                color: "#0F766E",
-                textDecoration: "none",
-              }}
-            >
-              View All ({counts.all}) →
-            </Link>
+            <InventorySection />
           </div>
+        )}
 
-          {loading ? (
-            <div style={{ textAlign: "center", padding: "30px", color: "#64748B" }}>
-              Loading recent students...
+        {/* ================= 6. CATEGORIES SECTION ================= */}
+        {activeSection === "categories" && <CategoriesSection />}
+
+        {/* ================= 7. ORDERS SECTION ================= */}
+        {activeSection === "orders" && <OrdersSection />}
+
+        {/* ================= 8. KITCHEN SECTION ================= */}
+        {activeSection === "kitchen" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+            <div style={{ background: "#FFFFFF", borderRadius: 20, padding: "24px 28px", border: "1px solid #E2E8F0", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div>
+                <h2 style={{ fontSize: 20, fontWeight: 800, margin: 0 }}>Kitchen Display System (KDS) & Chef Line</h2>
+                <p style={{ margin: "4px 0 0", fontSize: 13, color: "#64748B" }}>
+                  Live audio alerts, preparation timers, order ticket routing, and instant ready marks.
+                </p>
+              </div>
+              <Link
+                href="/kitchen"
+                target="_blank"
+                style={{
+                  padding: "10px 20px",
+                  borderRadius: 12,
+                  background: "#0F766E",
+                  color: "#FFFFFF",
+                  fontWeight: 800,
+                  fontSize: 14,
+                  textDecoration: "none",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 8,
+                }}
+              >
+                <ChefHat size={18} /> Launch Kitchen Display
+              </Link>
             </div>
-          ) : recentStudents.length === 0 ? (
-            <div style={{ textAlign: "center", padding: "30px", color: "#64748B" }}>
-              No students registered yet.
+            <OrdersSection />
+          </div>
+        )}
+
+        {/* ================= 9. DELIVERY SECTION ================= */}
+        {activeSection === "delivery" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+            <div style={{ background: "#FFFFFF", borderRadius: 20, padding: "24px 28px", border: "1px solid #E2E8F0", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div>
+                <h2 style={{ fontSize: 20, fontWeight: 800, margin: 0 }}>Campus Delivery Operations</h2>
+                <p style={{ margin: "4px 0 0", fontSize: 13, color: "#64748B" }}>
+                  Delivery agent status, hall/department couriers, pickup OTPs, and handover tracking.
+                </p>
+              </div>
+              <Link
+                href="/delivery"
+                target="_blank"
+                style={{
+                  padding: "10px 20px",
+                  borderRadius: 12,
+                  background: "#FF6B00",
+                  color: "#FFFFFF",
+                  fontWeight: 800,
+                  fontSize: 14,
+                  textDecoration: "none",
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 8,
+                }}
+              >
+                <Bike size={18} /> Launch Rider Dashboard
+              </Link>
             </div>
-          ) : (
-            <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", fontSize: 13 }}>
-                <thead>
-                  <tr style={{ borderBottom: "1px solid #E2E8F0", color: "#64748B" }}>
-                    <th style={{ padding: "12px 14px", fontWeight: 600 }}>Name</th>
-                    <th style={{ padding: "12px 14px", fontWeight: 600 }}>University ID</th>
-                    <th style={{ padding: "12px 14px", fontWeight: 600 }}>Department</th>
-                    <th style={{ padding: "12px 14px", fontWeight: 600 }}>Session</th>
-                    <th style={{ padding: "12px 14px", fontWeight: 600 }}>Status</th>
-                    <th style={{ padding: "12px 14px", fontWeight: 600, textAlign: "right" }}>Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {recentStudents.map((st) => (
-                    <tr key={st.id} style={{ borderBottom: "1px solid #F1F5F9" }}>
-                      <td style={{ padding: "14px", fontWeight: 600, color: "#0F172A" }}>
-                        {st.user.fullName}
-                      </td>
-                      <td style={{ padding: "14px", fontFamily: "monospace", color: "#0F766E", fontWeight: 700 }}>
-                        {st.universityStudentId}
-                      </td>
-                      <td style={{ padding: "14px", color: "#475569" }}>
-                        {st.department.name} ({st.department.code})
-                      </td>
-                      <td style={{ padding: "14px", color: "#64748B" }}>
-                        {st.session}
-                      </td>
-                      <td style={{ padding: "14px" }}>
-                        <span
-                          style={{
-                            padding: "4px 10px",
-                            borderRadius: 12,
-                            fontSize: 11,
-                            fontWeight: 700,
-                            background:
-                              st.verificationStatus === "APPROVED"
-                                ? "#DCFCE7"
-                                : st.verificationStatus === "REJECTED"
-                                ? "#FEE2E2"
-                                : st.verificationStatus === "MORE_INFO_REQUIRED"
-                                ? "#E0E7FF"
-                                : "#FEF3C7",
-                            color:
-                              st.verificationStatus === "APPROVED"
-                                ? "#16A34A"
-                                : st.verificationStatus === "REJECTED"
-                                ? "#DC2626"
-                                : st.verificationStatus === "MORE_INFO_REQUIRED"
-                                ? "#4F46E5"
-                                : "#B45309",
-                          }}
-                        >
-                          {st.verificationStatus}
-                        </span>
-                      </td>
-                      <td style={{ padding: "14px", textAlign: "right" }}>
-                        <Link
-                          href={`/admin/verifications/${st.id}`}
-                          style={{
-                            padding: "6px 12px",
-                            borderRadius: 8,
-                            background: "#F0FDFA",
-                            color: "#0F766E",
-                            fontWeight: 600,
-                            fontSize: 12,
-                            textDecoration: "none",
-                            border: "1px solid #CCFBF1",
-                          }}
-                        >
-                          Review
-                        </Link>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
+            <StaffSection />
+          </div>
+        )}
+
+        {/* ================= 10. INVENTORY SECTION ================= */}
+        {activeSection === "inventory" && <InventorySection />}
+
+        {/* ================= 11. PAYMENTS SECTION ================= */}
+        {activeSection === "payments" && <PaymentsSection />}
+
+        {/* ================= 12. REVIEWS SECTION ================= */}
+        {activeSection === "reviews" && <ReviewsSection />}
+
+        {/* ================= 13. COMPLAINTS SECTION ================= */}
+        {activeSection === "complaints" && <ComplaintsSection />}
+
+        {/* ================= 14. REWARDS SECTION ================= */}
+        {activeSection === "rewards" && <RewardsSection />}
+
+        {/* ================= 15. NOTIFICATIONS SECTION ================= */}
+        {activeSection === "notifications" && <NotificationsSection />}
+
+        {/* ================= 16. ANALYTICS SECTION ================= */}
+        {activeSection === "analytics" && <AnalyticsSection />}
+
+        {/* ================= 17. SECURITY SECTION ================= */}
+        {activeSection === "security" && <SecuritySection />}
+
+        {/* ================= 18. SETTINGS SECTION ================= */}
+        {activeSection === "settings" && <SettingsSection />}
       </main>
     </div>
   );

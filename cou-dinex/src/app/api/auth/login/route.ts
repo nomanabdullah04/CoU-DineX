@@ -3,8 +3,12 @@ import { prisma } from "@/lib/prisma";
 import { loginSchema } from "@/lib/validations/auth";
 import { verifyPassword, signSessionToken, AUTH_COOKIE_NAME } from "@/lib/auth";
 
+import { AuditAction } from "@prisma/client";
+
 export async function POST(req: NextRequest) {
   try {
+    const ipAddress = req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || "127.0.0.1";
+    const userAgent = req.headers.get("user-agent") || "unknown";
     const body = await req.json();
 
     // 1. Validation
@@ -32,6 +36,21 @@ export async function POST(req: NextRequest) {
     });
 
     if (!user || !user.passwordHash) {
+      // Record failed login audit log for security analytics
+      try {
+        await prisma.auditLog.create({
+          data: {
+            action: AuditAction.LOGIN,
+            entityName: "Auth",
+            entityId: "FAILED_USER_NOT_FOUND",
+            ipAddress,
+            userAgent,
+            newValues: { identifier: identifier.slice(0, 3) + "***", status: "FAILED_INVALID_IDENTIFIER" },
+          },
+        });
+      } catch (e) {
+        console.error("Audit log error:", e);
+      }
       return NextResponse.json(
         { error: "Invalid email/phone or password" },
         { status: 401 }
@@ -48,10 +67,43 @@ export async function POST(req: NextRequest) {
     // 3. Verify password
     const isPasswordValid = await verifyPassword(password, user.passwordHash);
     if (!isPasswordValid) {
+      // Record failed password attempt
+      try {
+        await prisma.auditLog.create({
+          data: {
+            userId: user.id,
+            action: AuditAction.LOGIN,
+            entityName: "Auth",
+            entityId: user.id,
+            ipAddress,
+            userAgent,
+            newValues: { status: "FAILED_INVALID_PASSWORD", role: user.role },
+          },
+        });
+      } catch (e) {
+        console.error("Audit log error:", e);
+      }
       return NextResponse.json(
         { error: "Invalid email/phone or password" },
         { status: 401 }
       );
+    }
+
+    // Record successful login audit log
+    try {
+      await prisma.auditLog.create({
+        data: {
+          userId: user.id,
+          action: AuditAction.LOGIN,
+          entityName: "Auth",
+          entityId: user.id,
+          ipAddress,
+          userAgent,
+          newValues: { status: "SUCCESS", role: user.role },
+        },
+      });
+    } catch (e) {
+      console.error("Audit log error:", e);
     }
 
     // 4. Create Session
