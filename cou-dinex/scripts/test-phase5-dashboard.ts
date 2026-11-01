@@ -21,7 +21,7 @@ async function runDashboardTests() {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       identifier: "fatima.approved@cou.ac.bd",
-      password: "Student123!",
+      password: "Student@123",
     }),
   });
 
@@ -107,7 +107,7 @@ async function runDashboardTests() {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       identifier: "noman.pending@cou.ac.bd",
-      password: "Student123!",
+      password: "Student@123",
     }),
   });
 

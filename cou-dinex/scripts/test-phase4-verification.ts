@@ -36,7 +36,7 @@ async function runPhase4Tests() {
     assert(adminUser !== null, "Admin user exists in database");
     assert(adminUser?.role === Role.SUPER_ADMIN, "Admin user has SUPER_ADMIN role");
 
-    const isPasswordValid = await verifyPassword("AdminPass123!", adminUser!.passwordHash!);
+    const isPasswordValid = await verifyPassword("Admin@123", adminUser!.passwordHash!);
     assert(isPasswordValid, "Admin password verified with bcrypt");
 
     const adminToken = await signSessionToken({

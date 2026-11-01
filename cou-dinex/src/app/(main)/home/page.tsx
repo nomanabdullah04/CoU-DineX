@@ -11,29 +11,24 @@ import {
   AlertCircle,
   Clock,
   Sparkles,
-  QrCode,
   ShoppingBag,
-  Package,
   Building2,
   Utensils,
-  History,
-  TrendingUp,
-  Award,
-  ChevronRight,
-  RefreshCw,
   Star,
   Leaf,
-  Percent,
-  Compass,
-  ArrowRight,
+  ChevronRight,
+  RefreshCw,
+  Award,
   Flame,
   Check,
-  Copy,
-  Radio,
-  ChefHat,
-  GraduationCap,
   Users,
   Calendar,
+  MapPin,
+  Plus,
+  ArrowRight,
+  Package,
+  GraduationCap,
+  Timer,
 } from "lucide-react";
 
 interface DashboardData {
@@ -124,15 +119,22 @@ interface DashboardData {
 }
 
 const CATEGORIES = [
-  { id: "All", label: "All" },
-  { id: "Burger", label: "Burger" },
-  { id: "Pizza", label: "Pizza" },
-  { id: "Meals", label: "Meals" },
-  { id: "Chicken", label: "Chicken" },
-  { id: "Noodles", label: "Noodles" },
-  { id: "Coffee", label: "Coffee" },
-  { id: "Drinks", label: "Drinks" },
-  { id: "Dessert", label: "Dessert" },
+  { id: "All", label: "All", emoji: "🍽️" },
+  { id: "Burger", label: "Burger", emoji: "🍔" },
+  { id: "Pizza", label: "Pizza", emoji: "🍕" },
+  { id: "Meals", label: "Meals", emoji: "🍛" },
+  { id: "Chicken", label: "Chicken", emoji: "🍗" },
+  { id: "Noodles", label: "Noodles", emoji: "🍜" },
+  { id: "Coffee", label: "Coffee", emoji: "☕" },
+  { id: "Drinks", label: "Drinks", emoji: "🥤" },
+  { id: "Dessert", label: "Dessert", emoji: "🍰" },
+];
+
+const ORDER_DESTINATIONS = [
+  { icon: Utensils, title: "Dine In", href: "/explore?type=dine", color: "#0F766E" },
+  { icon: ShoppingBag, title: "Pickup", href: "/explore?type=takeaway", color: "#D97706" },
+  { icon: Building2, title: "Hall", href: "/explore?type=hall", color: "#7C3AED" },
+  { icon: GraduationCap, title: "Dept", href: "/explore?type=department", color: "#2563EB" },
 ];
 
 export default function HomePage() {
@@ -142,10 +144,8 @@ export default function HomePage() {
   const [error, setError] = React.useState<string | null>(null);
   const [searchQuery, setSearchQuery] = React.useState("");
   const [selectedCategory, setSelectedCategory] = React.useState("All");
-  const [copiedCode, setCopiedCode] = React.useState<string | null>(null);
   const [addedItemIds, setAddedItemIds] = React.useState<Record<string, boolean>>({});
 
-  // Phase 13 Innovation telemetry states
   const [radarTelemetry, setRadarTelemetry] = React.useState<{
     crowdLevel: string;
     crowdColor: string;
@@ -199,14 +199,13 @@ export default function HomePage() {
         window.location.href = "/login?callbackUrl=/home";
         return;
       } else {
-        throw new Error("Unable to fetch dashboard data. Please try again.");
+        throw new Error("Unable to load. Please try again.");
       }
 
-      // Populate Radar Telemetry
       if (resRadar.status === "fulfilled" && resRadar.value.ok) {
         const rJson = await resRadar.value.json();
         setRadarTelemetry({
-          crowdLevel: rJson.telemetry?.crowdLevel || "LOW CROWD",
+          crowdLevel: rJson.telemetry?.crowdLevel || "LOW",
           crowdColor: rJson.telemetry?.crowdColor || "#16A34A",
           availableNow: rJson.counts?.availableNow || 0,
           soldOut: rJson.counts?.soldOut || 0,
@@ -214,18 +213,16 @@ export default function HomePage() {
         });
       }
 
-      // Populate Smart Queue Telemetry
       if (resQueue.status === "fulfilled" && resQueue.value.ok) {
         const qJson = await resQueue.value.json();
         setSmartQueueTelemetry({
           totalOrders: qJson.currentQueue?.totalOrders || 0,
           queueStatus: qJson.currentQueue?.queueStatus || "SMOOTH",
           estimatedPrepMinutes: qJson.estimation?.estimatedPreparationMinutes || 12,
-          suggestedOrderTime: qJson.estimation?.suggestedOrderTime || "Order now for minimum wait",
+          suggestedOrderTime: qJson.estimation?.suggestedOrderTime || "Order now",
         });
       }
 
-      // Populate Class Schedule Pre-order recommendation
       if (resSchedule.status === "fulfilled" && resSchedule.value.ok) {
         const sJson = await resSchedule.value.json();
         if (sJson.recommendations && sJson.recommendations.length > 0) {
@@ -233,7 +230,7 @@ export default function HomePage() {
         }
       }
     } catch (err: any) {
-      setError(err.message || "Failed to load dashboard.");
+      setError(err.message || "Failed to load.");
     } finally {
       setIsLoading(false);
     }
@@ -243,21 +240,13 @@ export default function HomePage() {
     fetchDashboardData();
   }, [fetchDashboardData]);
 
-  // Dynamic greeting based on current local hour (SRS Section 8)
   const getGreeting = () => {
     const hour = new Date().getHours();
-    if (hour < 12) return "Good morning";
-    if (hour < 17) return "Good afternoon";
-    return "Good evening";
+    if (hour < 12) return "Good Morning";
+    if (hour < 17) return "Good Afternoon";
+    return "Good Evening";
   };
 
-  const handleCopyCode = (code: string) => {
-    navigator.clipboard.writeText(code);
-    setCopiedCode(code);
-    setTimeout(() => setCopiedCode(null), 2500);
-  };
-
-  // Filtered available food items
   const filteredFood = React.useMemo(() => {
     if (!data?.availableNow) return [];
     return data.availableNow.filter((item) => {
@@ -272,1408 +261,767 @@ export default function HomePage() {
     });
   }, [data?.availableNow, searchQuery, selectedCategory]);
 
-  return (
-    <div style={{ maxWidth: 1120, margin: "0 auto" }} className="space-y-7">
-      {/* ── Loading Skeleton ── */}
-      {isLoading && (
-        <div className="space-y-6 animate-pulse">
-          <div className="h-28 rounded-2xl bg-slate-200 dark:bg-slate-800" />
-          <div className="h-56 rounded-2xl bg-slate-200 dark:bg-slate-800" />
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {[...Array(4)].map((_, i) => (
-              <div key={i} className="h-28 rounded-2xl bg-slate-200 dark:bg-slate-800" />
+  const handleAddToCart = (item: DashboardData["availableNow"][0]) => {
+    if (item.availability === "Sold Out") return;
+    addItem({
+      id: item.id,
+      name: item.name,
+      price: item.discountPrice ?? item.price,
+      originalPrice: item.price,
+      imageUrl: item.imageUrl || getItemImageUrl(item.name),
+      cafeteriaId: item.cafeteriaId || "central-cafeteria",
+      cafeteriaName: item.cafeteriaName || data?.radar?.cafeteriaName || "CoU Central Cafeteria",
+      preparationTimeMinutes: item.preparationTime,
+    });
+    setAddedItemIds((prev) => ({ ...prev, [item.id]: true }));
+    setTimeout(() => {
+      setAddedItemIds((prev) => ({ ...prev, [item.id]: false }));
+    }, 1800);
+  };
+
+  if (isLoading) {
+    return (
+      <div className="dinex-home-skeleton">
+        <div className="animate-pulse space-y-4" style={{ maxWidth: 960, margin: "0 auto" }}>
+          <div className="h-14 rounded-2xl bg-slate-200 dark:bg-slate-800" />
+          <div className="h-12 rounded-xl bg-slate-200 dark:bg-slate-800" />
+          <div className="flex gap-3 overflow-hidden">
+            {[...Array(6)].map((_, i) => (
+              <div key={i} className="h-20 w-20 rounded-2xl bg-slate-200 dark:bg-slate-800 flex-shrink-0" />
             ))}
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="h-44 rounded-2xl bg-slate-200 dark:bg-slate-800" />
-            <div className="h-44 rounded-2xl bg-slate-200 dark:bg-slate-800" />
-            <div className="h-44 rounded-2xl bg-slate-200 dark:bg-slate-800" />
+          <div className="grid grid-cols-2 gap-3">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="h-56 rounded-2xl bg-slate-200 dark:bg-slate-800" />
+            ))}
           </div>
         </div>
-      )}
+      </div>
+    );
+  }
 
-      {/* ── Error State ── */}
-      {error && !isLoading && (
-        <div
+  if (error && !data) {
+    return (
+      <div style={{ maxWidth: 400, margin: "80px auto", textAlign: "center", padding: "0 20px" }}>
+        <div style={{
+          width: 64, height: 64, borderRadius: "50%",
+          background: "rgba(220,38,38,0.08)", display: "flex",
+          alignItems: "center", justifyContent: "center", margin: "0 auto 16px",
+        }}>
+          <AlertCircle size={28} color="#DC2626" />
+        </div>
+        <h3 style={{ fontSize: 18, fontWeight: 700, color: "var(--txt)", margin: "0 0 8px" }}>
+          Connection Error
+        </h3>
+        <p style={{ fontSize: 14, color: "var(--txt-muted)", margin: "0 0 20px" }}>{error}</p>
+        <button
+          onClick={fetchDashboardData}
+          className="dinex-btn-primary"
           style={{
-            padding: "28px",
-            borderRadius: 20,
-            background: "var(--surface)",
-            border: "1px solid var(--border)",
-            textAlign: "center",
+            padding: "12px 28px", borderRadius: 14, border: "none",
+            background: "var(--primary)", color: "#fff", fontWeight: 700,
+            fontSize: 14, cursor: "pointer", display: "inline-flex",
+            alignItems: "center", gap: 8,
           }}
         >
-          <AlertCircle size={40} color="var(--error)" className="mx-auto mb-3" />
-          <h3 style={{ fontSize: 18, fontWeight: 700, color: "var(--txt)", margin: "0 0 6px 0" }}>
-            Unable to connect to Central Dining
-          </h3>
-          <p style={{ fontSize: 14, color: "var(--txt-muted)", margin: "0 0 16px 0" }}>{error}</p>
+          <RefreshCw size={16} /> Retry
+        </button>
+      </div>
+    );
+  }
+
+  if (!data) return null;
+
+  return (
+    <div style={{ maxWidth: 960, margin: "0 auto" }}>
+
+      {/* Greeting + Cafeteria Status */}
+      <div style={{ marginBottom: 20 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+          <div>
+            <h1 style={{
+              fontSize: 22, fontWeight: 800, color: "var(--txt)", margin: 0,
+              letterSpacing: "-0.02em",
+            }}>
+              {getGreeting()}, {data.student.name.split(" ")[0]} 👋
+            </h1>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 4 }}>
+              <MapPin size={13} color="var(--primary)" />
+              <span style={{ fontSize: 13, color: "var(--txt-2)", fontWeight: 500 }}>
+                {data.radar.cafeteriaName || "CoU Central Cafeteria"}
+              </span>
+              {data.student.isVerified && (
+                <span style={{
+                  display: "inline-flex", alignItems: "center", gap: 3,
+                  fontSize: 10, fontWeight: 700, color: "#10B981",
+                  background: "rgba(16,185,129,0.1)", padding: "2px 8px",
+                  borderRadius: 99,
+                }}>
+                  <CheckCircle2 size={10} /> Verified
+                </span>
+              )}
+            </div>
+          </div>
+          <div style={{
+            display: "flex", alignItems: "center", gap: 6,
+            padding: "6px 12px", borderRadius: 12,
+            background: "var(--surface)", border: "1px solid var(--border)",
+          }}>
+            <span style={{
+              width: 8, height: 8, borderRadius: "50%", background: "#16A34A",
+              boxShadow: "0 0 8px rgba(22,163,74,0.5)",
+            }} />
+            <span style={{ fontSize: 12, fontWeight: 600, color: "var(--txt)" }}>Open</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Search Bar */}
+      <div style={{
+        position: "relative", marginBottom: 20,
+        background: "var(--surface)", borderRadius: 16,
+        border: "1px solid var(--border)",
+        display: "flex", alignItems: "center", padding: "0 16px",
+        boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
+      }}>
+        <Search size={18} color="var(--txt-muted)" style={{ flexShrink: 0 }} />
+        <input
+          type="text"
+          placeholder="Search for food..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          style={{
+            width: "100%", padding: "14px 12px", border: "none", outline: "none",
+            background: "transparent", fontSize: 14, color: "var(--txt)",
+          }}
+        />
+        {searchQuery && (
           <button
-            onClick={fetchDashboardData}
+            onClick={() => setSearchQuery("")}
             style={{
-              padding: "10px 24px",
-              borderRadius: 12,
-              background: "var(--primary)",
-              color: "#FFFFFF",
-              fontWeight: 700,
-              fontSize: 14,
-              border: "none",
-              cursor: "pointer",
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 8,
+              border: "none", background: "var(--surface-2)", color: "var(--txt-muted)",
+              cursor: "pointer", fontSize: 11, fontWeight: 700, padding: "4px 10px",
+              borderRadius: 8,
             }}
           >
-            <RefreshCw size={16} /> Reconnect
+            Clear
           </button>
+        )}
+      </div>
+
+      {/* Active Order Floating Tracker */}
+      {data.activeOrder && (
+        <Link
+          href={`/orders/${data.activeOrder.id}`}
+          style={{
+            display: "flex", alignItems: "center", justifyContent: "space-between",
+            padding: "14px 18px", marginBottom: 20, borderRadius: 16,
+            background: "linear-gradient(135deg, #0F766E 0%, #0D9488 100%)",
+            color: "#fff", textDecoration: "none",
+            boxShadow: "0 8px 24px rgba(15,118,110,0.3)",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <div style={{
+              width: 40, height: 40, borderRadius: 12,
+              background: "rgba(255,255,255,0.2)", display: "flex",
+              alignItems: "center", justifyContent: "center",
+            }}>
+              <Package size={20} />
+            </div>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 700 }}>
+                #{data.activeOrder.orderNumber}
+              </div>
+              <div style={{ fontSize: 12, opacity: 0.85 }}>
+                {data.activeOrder.status.replace(/_/g, " ")} · ~{data.activeOrder.estimatedTimeMinutes} min
+              </div>
+            </div>
+          </div>
+          <div style={{
+            display: "flex", alignItems: "center", gap: 4,
+            fontSize: 13, fontWeight: 700,
+          }}>
+            Track <ChevronRight size={16} />
+          </div>
+        </Link>
+      )}
+
+      {/* Delivery Options */}
+      <div style={{ display: "flex", gap: 10, marginBottom: 24, overflowX: "auto", scrollbarWidth: "none" }}>
+        {ORDER_DESTINATIONS.map((dest) => {
+          const IconComp = dest.icon;
+          return (
+            <Link
+              key={dest.title}
+              href={dest.href}
+              style={{
+                flex: "0 0 auto", minWidth: 80,
+                display: "flex", flexDirection: "column", alignItems: "center",
+                gap: 8, padding: "14px 12px", borderRadius: 16,
+                background: "var(--surface)", border: "1px solid var(--border)",
+                textDecoration: "none", transition: "all 150ms",
+                boxShadow: "0 2px 8px rgba(0,0,0,0.03)",
+              }}
+              className="hover:shadow-md hover:border-primary/30"
+            >
+              <div style={{
+                width: 44, height: 44, borderRadius: 14,
+                background: `${dest.color}12`, color: dest.color,
+                display: "flex", alignItems: "center", justifyContent: "center",
+              }}>
+                <IconComp size={22} />
+              </div>
+              <span style={{ fontSize: 12, fontWeight: 700, color: "var(--txt)" }}>
+                {dest.title}
+              </span>
+            </Link>
+          );
+        })}
+
+        <Link
+          href="/group-orders"
+          style={{
+            flex: "0 0 auto", minWidth: 80,
+            display: "flex", flexDirection: "column", alignItems: "center",
+            gap: 8, padding: "14px 12px", borderRadius: 16,
+            background: "var(--surface)", border: "1px solid var(--border)",
+            textDecoration: "none", transition: "all 150ms",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.03)",
+          }}
+          className="hover:shadow-md"
+        >
+          <div style={{
+            width: 44, height: 44, borderRadius: 14,
+            background: "rgba(236,72,153,0.1)", color: "#EC4899",
+            display: "flex", alignItems: "center", justifyContent: "center",
+          }}>
+            <Users size={22} />
+          </div>
+          <span style={{ fontSize: 12, fontWeight: 700, color: "var(--txt)" }}>Group</span>
+        </Link>
+
+        <Link
+          href="/class-schedule"
+          style={{
+            flex: "0 0 auto", minWidth: 80,
+            display: "flex", flexDirection: "column", alignItems: "center",
+            gap: 8, padding: "14px 12px", borderRadius: 16,
+            background: "var(--surface)", border: "1px solid var(--border)",
+            textDecoration: "none", transition: "all 150ms",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.03)",
+          }}
+          className="hover:shadow-md"
+        >
+          <div style={{
+            width: 44, height: 44, borderRadius: 14,
+            background: "rgba(139,92,246,0.1)", color: "#8B5CF6",
+            display: "flex", alignItems: "center", justifyContent: "center",
+          }}>
+            <Calendar size={22} />
+          </div>
+          <span style={{ fontSize: 12, fontWeight: 700, color: "var(--txt)" }}>Schedule</span>
+        </Link>
+      </div>
+
+      {/* Class Schedule Alert */}
+      {classRecommendation && (
+        <div style={{
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          padding: "12px 16px", marginBottom: 20, borderRadius: 14,
+          background: "rgba(15,118,110,0.06)", border: "1px solid rgba(15,118,110,0.15)",
+          flexWrap: "wrap", gap: 10,
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <Sparkles size={16} color="var(--primary)" />
+            <span style={{ fontSize: 13, fontWeight: 600, color: "var(--txt)" }}>
+              {classRecommendation.message}
+            </span>
+          </div>
+          <Link
+            href="/explore"
+            style={{
+              fontSize: 12, fontWeight: 700, color: "var(--primary)",
+              textDecoration: "none", display: "flex", alignItems: "center", gap: 4,
+            }}
+          >
+            {classRecommendation.suggestedAction} <ArrowRight size={12} />
+          </Link>
         </div>
       )}
 
-      {/* ── Loaded Content ── */}
-      {data && !isLoading && (
-        <>
-          { }
-          <div
-            style={{
-              background: "var(--surface)",
-              border: "1px solid var(--border)",
-              borderRadius: 22,
-              padding: "22px 26px",
-              display: "flex",
-              flexDirection: "column",
-              gap: 16,
-              boxShadow: "var(--shadow-card)",
-            }}
-            className="md:flex-row md:items-center md:justify-between"
-          >
-            <div>
-              <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                <h1
-                  style={{
-                    fontSize: "clamp(22px, 3.5vw, 28px)",
-                    fontWeight: 900,
-                    color: "var(--txt)",
-                    margin: 0,
-                    letterSpacing: "-0.02em",
-                  }}
-                >
-                  {getGreeting()}, {data.student.name.split(" ")[0]}
-                </h1>
-
-                {/* Verified Student Badge */}
-                {data.student.isVerified ? (
-                  <span
-                    style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: 5,
-                      padding: "4px 12px",
-                      borderRadius: 99,
-                      background: "rgba(16, 185, 129, 0.12)",
-                      color: "#10B981",
-                      border: "1px solid rgba(16, 185, 129, 0.25)",
-                      fontSize: 12,
-                      fontWeight: 700,
-                    }}
-                  >
-                    <CheckCircle2 size={14} color="#10B981" />
-                    ✓ Verified CoU Student
-                  </span>
-                ) : (
-                  <Link
-                    href="/student/verification-status"
-                    style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: 5,
-                      padding: "4px 12px",
-                      borderRadius: 99,
-                      background: "rgba(245, 158, 11, 0.12)",
-                      color: "#F59E0B",
-                      border: "1px solid rgba(245, 158, 11, 0.25)",
-                      fontSize: 12,
-                      fontWeight: 700,
-                      textDecoration: "none",
-                    }}
-                  >
-                    <AlertCircle size={14} color="#F59E0B" />
-                    {data.student.verificationStatus === "PENDING"
-                      ? "Verification Pending"
-                      : "Action Required"}
-                  </Link>
-                )}
-              </div>
-
-              <p style={{ fontSize: 13, color: "var(--txt-muted)", margin: "6px 0 0 0" }}>
-                Student ID: <span style={{ fontWeight: 700, color: "var(--txt-2)" }}>{data.student.studentId}</span> •{" "}
-                {data.student.department} • Session {data.student.session}
-              </p>
-            </div>
-
-            {/* Cafeteria Status Indicator */}
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 12,
-                padding: "10px 16px",
-                borderRadius: 14,
-                background: "var(--surface-2)",
-                border: "1px solid var(--border)",
-              }}
-            >
-              <div
-                style={{
-                  width: 10,
-                  height: 10,
-                  borderRadius: "50%",
-                  background: "#16A34A",
-                  boxShadow: "0 0 10px #16A34A",
-                }}
-              />
-              <div style={{ fontSize: 12 }}>
-                <div style={{ fontWeight: 700, color: "var(--txt)" }}>Central Cafeteria Open</div>
-                <div style={{ color: "var(--txt-muted)", fontSize: 11 }}>Service: 8:00 AM – 9:00 PM</div>
-              </div>
-            </div>
+      {/* Live Status Bar */}
+      <div style={{
+        display: "flex", gap: 8, marginBottom: 24, overflowX: "auto",
+        scrollbarWidth: "none",
+      }}>
+        <div style={{
+          flex: "1 1 0", minWidth: 100, padding: "12px 14px", borderRadius: 14,
+          background: "var(--surface)", border: "1px solid var(--border)",
+        }}>
+          <div style={{ fontSize: 11, color: "var(--txt-muted)", fontWeight: 600 }}>
+            Available
           </div>
-
-          { }
-          <div className="space-y-3">
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <h2 style={{ fontSize: 20, fontWeight: 800, color: "var(--txt)", margin: 0 }}>
-                What are you craving today?
-              </h2>
-            </div>
-
-            <div
-              style={{
-                position: "relative",
-                background: "var(--surface)",
-                borderRadius: 18,
-                border: "1px solid var(--border)",
-                display: "flex",
-                alignItems: "center",
-                padding: "0 18px",
-                boxShadow: "var(--shadow-card)",
-              }}
-            >
-              <Search size={19} color="var(--txt-muted)" style={{ flexShrink: 0 }} />
-              <input
-                type="text"
-                placeholder="Search burgers, pizza, rice, cold coffee, snacks..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                style={{
-                  width: "100%",
-                  padding: "15px 14px",
-                  border: "none",
-                  outline: "none",
-                  background: "transparent",
-                  fontSize: 14,
-                  color: "var(--txt)",
-                }}
-              />
-              {searchQuery && (
-                <button
-                  onClick={() => setSearchQuery("")}
-                  style={{
-                    border: "none",
-                    background: "transparent",
-                    color: "var(--txt-muted)",
-                    cursor: "pointer",
-                    fontSize: 12,
-                    fontWeight: 700,
-                  }}
-                >
-                  Clear
-                </button>
-              )}
-            </div>
-
-            {/* Category Pills (SRS Section 10) */}
-            <div
-              style={{
-                display: "flex",
-                gap: 8,
-                overflowX: "auto",
-                paddingBottom: 4,
-                scrollbarWidth: "none",
-              }}
-            >
-              {CATEGORIES.map((cat) => {
-                const isSelected = selectedCategory === cat.id;
-                return (
-                  <button
-                    key={cat.id}
-                    onClick={() => setSelectedCategory(cat.id)}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 6,
-                      padding: "8px 16px",
-                      borderRadius: 99,
-                      fontSize: 13,
-                      fontWeight: 600,
-                      border: isSelected ? "1px solid var(--primary)" : "1px solid var(--border)",
-                      background: isSelected ? "var(--primary)" : "var(--surface)",
-                      color: isSelected ? "#FFFFFF" : "var(--txt-2)",
-                      cursor: "pointer",
-                      whiteSpace: "nowrap",
-                      transition: "all 150ms ease",
-                      boxShadow: isSelected ? "var(--shadow-primary)" : "none",
-                    }}
-                  >
-                    <span>{cat.label}</span>
-                  </button>
-                );
-              })}
-            </div>
+          <div style={{ fontSize: 20, fontWeight: 900, color: "var(--primary)", marginTop: 2 }}>
+            {radarTelemetry?.availableNow ?? data.radar.availableFoodCount}
           </div>
+        </div>
+        <div style={{
+          flex: "1 1 0", minWidth: 100, padding: "12px 14px", borderRadius: 14,
+          background: "var(--surface)", border: "1px solid var(--border)",
+        }}>
+          <div style={{ fontSize: 11, color: "var(--txt-muted)", fontWeight: 600 }}>
+            Wait Time
+          </div>
+          <div style={{ fontSize: 20, fontWeight: 900, color: "var(--txt)", marginTop: 2 }}>
+            ~{radarTelemetry?.estimatedWaitMinutes ?? data.radar.avgWaitMinutes}m
+          </div>
+        </div>
+        <div style={{
+          flex: "1 1 0", minWidth: 100, padding: "12px 14px", borderRadius: 14,
+          background: "var(--surface)", border: "1px solid var(--border)",
+        }}>
+          <div style={{ fontSize: 11, color: "var(--txt-muted)", fontWeight: 600 }}>
+            Queue
+          </div>
+          <div style={{ fontSize: 20, fontWeight: 900, color: "var(--txt)", marginTop: 2 }}>
+            {smartQueueTelemetry?.totalOrders ?? 0}
+          </div>
+        </div>
+        <div style={{
+          flex: "1 1 0", minWidth: 100, padding: "12px 14px", borderRadius: 14,
+          background: "var(--surface)", border: "1px solid var(--border)",
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: "var(--txt-muted)", fontWeight: 600 }}>
+            <Award size={12} /> Points
+          </div>
+          <div style={{ fontSize: 20, fontWeight: 900, color: "#F59E0B", marginTop: 2 }}>
+            {data.rewards.points}
+          </div>
+        </div>
+      </div>
 
-          { }
-          <div
+      {/* Category Pills */}
+      <div style={{
+        display: "flex", gap: 8, overflowX: "auto", marginBottom: 20,
+        scrollbarWidth: "none", paddingBottom: 2,
+      }}>
+        {CATEGORIES.map((cat) => {
+          const isActive = selectedCategory === cat.id;
+          return (
+            <button
+              key={cat.id}
+              onClick={() => setSelectedCategory(cat.id)}
+              style={{
+                display: "flex", alignItems: "center", gap: 6,
+                padding: "8px 16px", borderRadius: 99, fontSize: 13,
+                fontWeight: isActive ? 700 : 500, whiteSpace: "nowrap",
+                border: isActive ? "1.5px solid var(--primary)" : "1px solid var(--border)",
+                background: isActive ? "var(--primary)" : "var(--surface)",
+                color: isActive ? "#fff" : "var(--txt-2)",
+                cursor: "pointer", transition: "all 150ms ease",
+                boxShadow: isActive ? "0 4px 12px rgba(15,118,110,0.25)" : "none",
+              }}
+            >
+              <span>{cat.emoji}</span>
+              <span>{cat.label}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Food Grid */}
+      <div style={{ marginBottom: 28 }}>
+        <div style={{
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          marginBottom: 14,
+        }}>
+          <h2 style={{ fontSize: 18, fontWeight: 800, color: "var(--txt)", margin: 0 }}>
+            {selectedCategory === "All" ? "Popular Now" : selectedCategory}
+          </h2>
+          <Link
+            href="/explore"
             style={{
-              background: "linear-gradient(135deg, #0F766E 0%, #115E59 100%)",
-              borderRadius: 24,
-              padding: "26px",
-              color: "#FFFFFF",
-              position: "relative",
-              overflow: "hidden",
-              boxShadow: "0 14px 30px -8px rgba(15, 118, 110, 0.35)",
+              fontSize: 13, fontWeight: 600, color: "var(--primary)",
+              textDecoration: "none", display: "flex", alignItems: "center", gap: 4,
             }}
           >
-            {/* Background watermark icon */}
-            <div
-              style={{
-                position: "absolute",
-                right: -25,
-                bottom: -25,
-                opacity: 0.09,
-                pointerEvents: "none",
-              }}
-            >
-              <Utensils size={200} />
-            </div>
+            See All <ChevronRight size={14} />
+          </Link>
+        </div>
 
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <Radio size={16} className="text-white" />
-                <span
-                  style={{
-                    fontSize: 13,
-                    fontWeight: 800,
-                    letterSpacing: "0.08em",
-                    textTransform: "uppercase",
-                    color: "rgba(255,255,255,0.9)",
-                  }}
-                >
-                  CAMPUS FOOD RADAR
-                </span>
-              </div>
-
-              <Link
-                href="/map"
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 4,
-                  padding: "6px 14px",
-                  borderRadius: 99,
-                  background: "rgba(255,255,255,0.18)",
-                  backdropFilter: "blur(8px)",
-                  color: "#FFFFFF",
-                  fontSize: 12,
-                  fontWeight: 700,
-                  textDecoration: "none",
-                }}
-              >
-                Explore Campus <ChevronRight size={14} />
-              </Link>
-            </div>
-
-            <p style={{ fontSize: 13, color: "rgba(255,255,255,0.8)", margin: "0 0 20px 0" }}>
-              Live occupancy and status at Central Dining Hall.
+        {filteredFood.length === 0 ? (
+          <div style={{
+            padding: "48px 20px", textAlign: "center", borderRadius: 20,
+            background: "var(--surface)", border: "1px solid var(--border)",
+          }}>
+            <Search size={32} color="var(--txt-muted)" style={{ opacity: 0.4, margin: "0 auto 12px" }} />
+            <p style={{ fontSize: 14, color: "var(--txt-muted)", margin: 0 }}>
+              No items found for &quot;{searchQuery || selectedCategory}&quot;
             </p>
-
-            {/* Telemetry Metrics Grid: Available now, Busy, Sold out, Estimated waiting time */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              {/* 1. Available now */}
-              <div
-                style={{
-                  background: "rgba(255,255,255,0.12)",
-                  backdropFilter: "blur(12px)",
-                  borderRadius: 16,
-                  padding: "14px 16px",
-                  border: "1px solid rgba(255,255,255,0.15)",
-                }}
-              >
-                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.7)", fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>
-                  <ShoppingBag size={12} className="text-white/70" /> Available Now
-                </div>
-                <div style={{ fontSize: 18, fontWeight: 900, marginTop: 4, color: "#FFFFFF" }}>
-                  {radarTelemetry?.availableNow ?? data.radar.availableFoodCount} ITEMS
-                </div>
-              </div>
-
-              {/* 2. Busy */}
-              <div
-                style={{
-                  background: "rgba(255,255,255,0.12)",
-                  backdropFilter: "blur(12px)",
-                  borderRadius: 16,
-                  padding: "14px 16px",
-                  border: "1px solid rgba(255,255,255,0.15)",
-                }}
-              >
-                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.7)", fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>
-                  <span style={{ width: 8, height: 8, borderRadius: "50%", background: radarTelemetry?.crowdColor || data.radar.crowdColor, display: "inline-block" }} /> Busy Status
-                </div>
-                <div style={{ fontSize: 18, fontWeight: 900, marginTop: 4, color: "#FFFFFF" }}>
-                  {radarTelemetry?.crowdLevel ?? data.radar.crowdLevel}
-                </div>
-              </div>
-
-              {/* 3. Sold out */}
-              <div
-                style={{
-                  background: "rgba(255,255,255,0.12)",
-                  backdropFilter: "blur(12px)",
-                  borderRadius: 16,
-                  padding: "14px 16px",
-                  border: "1px solid rgba(255,255,255,0.15)",
-                }}
-              >
-                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.7)", fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>
-                  <AlertCircle size={12} className="text-white/70" /> Sold Out
-                </div>
-                <div style={{ fontSize: 18, fontWeight: 900, marginTop: 4, color: "#FFFFFF" }}>
-                  {radarTelemetry?.soldOut ?? 0} ITEMS
-                </div>
-              </div>
-
-              {/* 4. Estimated waiting time */}
-              <div
-                style={{
-                  background: "rgba(255,255,255,0.12)",
-                  backdropFilter: "blur(12px)",
-                  borderRadius: 16,
-                  padding: "14px 16px",
-                  border: "1px solid rgba(255,255,255,0.15)",
-                }}
-              >
-                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.7)", fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>
-                  <Clock size={12} className="text-white/70" /> Est. Waiting Time
-                </div>
-                <div style={{ fontSize: 18, fontWeight: 900, marginTop: 4, color: "#FFFFFF" }}>
-                  ~{radarTelemetry?.estimatedWaitMinutes ?? data.radar.avgWaitMinutes} MIN
-                </div>
-              </div>
-            </div>
           </div>
-
-          {/* ── Phase 13 Innovation Quick Banners ── */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Group Ordering Banner */}
-            <Link
-              href="/group-orders"
-              style={{
-                background: "var(--surface)",
-                border: "1px solid var(--border)",
-                borderRadius: 20,
-                padding: "18px 20px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                textDecoration: "none",
-                boxShadow: "var(--shadow-card)",
-                transition: "all 150ms ease",
-              }}
-              className="hover:shadow-md hover:border-primary"
-            >
-              <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-                <div
-                  style={{
-                    width: 44,
-                    height: 44,
-                    borderRadius: 12,
-                    background: "rgba(15, 118, 110, 0.12)",
-                    color: "var(--primary)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    flexShrink: 0,
-                  }}
-                >
-                  <Users size={22} />
-                </div>
-                <div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    <span style={{ fontSize: 15, fontWeight: 800, color: "var(--txt)" }}>Group Dine & Split Pay</span>
-                    <span style={{ fontSize: 10, fontWeight: 800, padding: "2px 6px", borderRadius: 99, background: "rgba(16, 185, 129, 0.12)", color: "#10B981" }}>NEW</span>
-                  </div>
-                  <div style={{ fontSize: 12, color: "var(--txt-muted)", marginTop: 2 }}>
-                    Create group cart, invite friends & split payment automatically
-                  </div>
-                </div>
-              </div>
-              <ChevronRight size={18} color="var(--txt-muted)" />
-            </Link>
-
-            {/* Class Schedule Pre-order Banner */}
-            <Link
-              href="/class-schedule"
-              style={{
-                background: "var(--surface)",
-                border: "1px solid var(--border)",
-                borderRadius: 20,
-                padding: "18px 20px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                textDecoration: "none",
-                boxShadow: "var(--shadow-card)",
-                transition: "all 150ms ease",
-              }}
-              className="hover:shadow-md hover:border-primary"
-            >
-              <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-                <div
-                  style={{
-                    width: 44,
-                    height: 44,
-                    borderRadius: 12,
-                    background: "rgba(59, 130, 246, 0.12)",
-                    color: "#3B82F6",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    flexShrink: 0,
-                  }}
-                >
-                  <Calendar size={22} />
-                </div>
-                <div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    <span style={{ fontSize: 15, fontWeight: 800, color: "var(--txt)" }}>Class Pre-order Routine</span>
-                    <span style={{ fontSize: 10, fontWeight: 800, padding: "2px 6px", borderRadius: 99, background: "rgba(59, 130, 246, 0.12)", color: "#3B82F6" }}>SMART</span>
-                  </div>
-                  <div style={{ fontSize: 12, color: "var(--txt-muted)", marginTop: 2 }}>
-                    Sync lecture timetable — order before class or ready after class
-                  </div>
-                </div>
-              </div>
-              <ChevronRight size={18} color="var(--txt-muted)" />
-            </Link>
-          </div>
-
-          {/* Active Class Schedule Recommendation Alert (if applicable) */}
-          {classRecommendation && (
-            <div
-              style={{
-                background: "linear-gradient(135deg, rgba(15, 118, 110, 0.08) 0%, rgba(16, 185, 129, 0.08) 100%)",
-                border: "1px solid rgba(15, 118, 110, 0.25)",
-                borderRadius: 20,
-                padding: "16px 20px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                flexWrap: "wrap",
-                gap: 12,
-              }}
-            >
-              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                <div
-                  style={{
-                    width: 38,
-                    height: 38,
-                    borderRadius: 10,
-                    background: "var(--primary)",
-                    color: "#FFF",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                  }}
-                >
-                  <Sparkles size={18} />
-                </div>
-                <div>
-                  <div style={{ fontWeight: 800, fontSize: 14, color: "var(--txt)" }}>
-                    “{classRecommendation.message}”
-                  </div>
-                  <div style={{ fontSize: 12, color: "var(--txt-muted)", marginTop: 2 }}>
-                    {classRecommendation.reason} {classRecommendation.suggestedTargetTime ? `• Expected by ${classRecommendation.suggestedTargetTime}` : ""}
-                  </div>
-                </div>
-              </div>
-
-              <Link
-                href="/explore"
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {filteredFood.map((item) => (
+              <div
+                key={item.id}
                 style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 6,
-                  padding: "8px 16px",
-                  borderRadius: 10,
-                  background: "var(--primary)",
-                  color: "#FFF",
-                  fontWeight: 700,
-                  fontSize: 12,
-                  textDecoration: "none",
+                  background: "var(--surface)", borderRadius: 18,
+                  border: "1px solid var(--border)", overflow: "hidden",
+                  transition: "all 200ms ease",
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
                 }}
+                className="hover:shadow-lg"
               >
-                <ShoppingBag size={14} /> {classRecommendation.suggestedAction} <ArrowRight size={12} />
-              </Link>
-            </div>
-          )}
+                {/* Image */}
+                <div style={{
+                  position: "relative", height: 140, overflow: "hidden",
+                  background: "var(--surface-2)",
+                }}>
+                  <Image
+                    src={item.imageUrl || getItemImageUrl(item.name)}
+                    alt={item.name}
+                    fill
+                    className="object-cover"
+                    sizes="(max-width: 768px) 50vw, 240px"
+                  />
 
-          { }
-          <div>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-              <h3 style={{ fontSize: 16, fontWeight: 800, color: "var(--txt)", margin: 0 }}>
-                Where are you eating?
-              </h3>
-              <span style={{ fontSize: 12, color: "var(--txt-muted)" }}>Order Destination</span>
-            </div>
-
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {[
-                {
-                  icon: Utensils,
-                  title: "Eat Here",
-                  desc: "Cafeteria Table",
-                  href: "/scan",
-                  badge: "Table QR",
-                },
-                {
-                  icon: ShoppingBag,
-                  title: "Take Away",
-                  desc: "Quick Counter Pickup",
-                  href: "/explore?type=takeaway",
-                  badge: "Skip Queue",
-                },
-                {
-                  icon: Building2,
-                  title: "Hall Delivery",
-                  desc: "Residential Dorm",
-                  href: "/explore?type=hall",
-                  badge: "To Room",
-                },
-                {
-                  icon: GraduationCap,
-                  title: "Department",
-                  desc: "Class / Lab Drop",
-                  href: "/explore?type=department",
-                  badge: "Academic",
-                },
-              ].map((dest, i) => {
-                const IconComponent = dest.icon;
-                return (
-                  <Link
-                    key={i}
-                    href={dest.href}
-                    style={{
-                      background: "var(--surface)",
-                      border: "1px solid var(--border)",
-                      borderRadius: 20,
-                      padding: "18px 16px",
-                      display: "flex",
-                      flexDirection: "column",
-                      alignItems: "center",
-                      textAlign: "center",
-                      textDecoration: "none",
-                      boxShadow: "var(--shadow-card)",
-                      transition: "all 150ms ease",
-                    }}
-                    className="hover:scale-[1.02] hover:shadow-md"
-                  >
-                    <div
-                      style={{
-                        width: 44,
-                        height: 44,
-                        borderRadius: 12,
-                        background: "var(--surface-2)",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        marginBottom: 10,
-                        color: "var(--primary)",
-                      }}
-                    >
-                      <IconComponent size={22} />
-                    </div>
-                    <div style={{ fontSize: 14, fontWeight: 800, color: "var(--txt)" }}>
-                      {dest.title}
-                    </div>
-                    <div style={{ fontSize: 11, color: "var(--txt-muted)", marginTop: 2 }}>
-                      {dest.desc}
-                    </div>
-                    <span
-                      style={{
-                        fontSize: 10,
-                        fontWeight: 700,
-                        marginTop: 8,
-                        padding: "2px 8px",
-                        borderRadius: 99,
-                        background: "var(--surface-2)",
-                        color: "var(--primary)",
-                      }}
-                    >
-                      {dest.badge}
+                  {/* Availability Badge */}
+                  <div style={{
+                    position: "absolute", top: 8, left: 8, display: "flex", gap: 4,
+                  }}>
+                    <span style={{
+                      fontSize: 10, fontWeight: 700, padding: "3px 8px",
+                      borderRadius: 8, backdropFilter: "blur(8px)",
+                      background: item.availability === "Available"
+                        ? "rgba(22,163,74,0.9)" : item.availability === "Few Left"
+                          ? "rgba(245,158,11,0.9)" : "rgba(220,38,38,0.9)",
+                      color: "#fff",
+                    }}>
+                      {item.availability === "Available" ? "✓ Available"
+                        : item.availability === "Few Left" ? "Few Left"
+                          : "Sold Out"}
                     </span>
-                  </Link>
-                );
-              })}
-            </div>
-          </div>
-
-          { }
-          <div>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-              <div>
-                <h3 style={{ fontSize: 18, fontWeight: 900, color: "var(--txt)", margin: 0 }}>
-                  What’s Available Now?
-                </h3>
-                <p style={{ fontSize: 12, color: "var(--txt-muted)", margin: "4px 0 0 0" }}>
-                  Live kitchen inventory verified with Central Dining Hall
-                </p>
-              </div>
-              <Link
-                href="/explore"
-                style={{
-                  fontSize: 13,
-                  fontWeight: 700,
-                  color: "var(--primary)",
-                  textDecoration: "none",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 4,
-                }}
-              >
-                View Full Menu <ChevronRight size={14} />
-              </Link>
-            </div>
-
-            {filteredFood.length === 0 ? (
-              <div
-                style={{
-                  padding: "36px 16px",
-                  textAlign: "center",
-                  background: "var(--surface)",
-                  borderRadius: 20,
-                  border: "1px solid var(--border)",
-                }}
-              >
-                <p style={{ fontSize: 14, color: "var(--txt-muted)", margin: 0 }}>
-                  No items found matching &quot;{searchQuery || selectedCategory}&quot;.
-                </p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                {filteredFood.map((item) => (
-                  <div
-                    key={item.id}
-                    style={{
-                      background: "var(--surface)",
-                      border: "1px solid var(--border)",
-                      borderRadius: 20,
-                      padding: "16px",
-                      display: "flex",
-                      flexDirection: "column",
-                      justifyContent: "space-between",
-                      boxShadow: "var(--shadow-card)",
-                      transition: "all 150ms ease",
-                    }}
-                    className="hover:shadow-md"
-                  >
-                    <div>
-                      {/* Top Badges: Availability Status (Text + Dot as required by SRS Section 11) */}
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-                        <span
-                          style={{
-                            display: "inline-flex",
-                            alignItems: "center",
-                            gap: 5,
-                            fontSize: 11,
-                            fontWeight: 700,
-                            padding: "3px 8px",
-                            borderRadius: 99,
-                            background:
-                              item.availability === "Available"
-                                ? "rgba(22, 163, 74, 0.1)"
-                                : item.availability === "Few Left"
-                                  ? "rgba(245, 158, 11, 0.1)"
-                                  : "rgba(220, 38, 38, 0.1)",
-                            color: item.dotColor,
-                          }}
-                        >
-                          <span
-                            style={{
-                              width: 7,
-                              height: 7,
-                              borderRadius: "50%",
-                              background: item.dotColor,
-                            }}
-                          />
-                          {item.availability}
-                        </span>
-
-                        {item.isDailySpecial && (
-                          <span
-                            style={{
-                              fontSize: 10,
-                              fontWeight: 800,
-                              background: "rgba(245, 158, 11, 0.15)",
-                              color: "#D97706",
-                              padding: "2px 8px",
-                              borderRadius: 6,
-                              display: "inline-flex",
-                              alignItems: "center",
-                              gap: 4,
-                            }}
-                          >
-                            <Sparkles size={11} /> Special
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Food Dish Photography */}
-                      <div
-                        style={{
-                          height: 120,
-                          borderRadius: 14,
-                          background: "var(--surface-2)",
-                          position: "relative",
-                          overflow: "hidden",
-                          marginBottom: 12,
-                        }}
-                      >
-                        <Image
-                          src={item.imageUrl || getItemImageUrl(item.name)}
-                          alt={item.name}
-                          fill
-                          className="object-cover transition-transform duration-300 hover:scale-105"
-                          sizes="(max-width: 768px) 100vw, 240px"
-                        />
-                      </div>
-
-                      <h4 style={{ fontSize: 15, fontWeight: 800, color: "var(--txt)", margin: "0 0 4px 0", lineHeight: 1.3 }}>
-                        {item.name}
-                      </h4>
-
-                      <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: "var(--txt-muted)", marginBottom: 14 }}>
-                        <span style={{ display: "flex", alignItems: "center", gap: 3 }}>
-                          <Star size={12} color="#F59E0B" fill="#F59E0B" /> {item.rating}
-                        </span>
-                        <span>•</span>
-                        <span style={{ display: "flex", alignItems: "center", gap: 3 }}>
-                          <Clock size={12} /> {item.preparationTime} min
-                        </span>
-                      </div>
-                    </div>
-
-                    <div>
-                      {/* Price & Action Button */}
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                        <div>
-                          <span style={{ fontSize: 18, fontWeight: 900, color: "var(--primary)" }}>
-                            ৳{item.price}
-                          </span>
-                          {item.discountPrice && (
-                            <span
-                              style={{
-                                fontSize: 12,
-                                color: "var(--txt-muted)",
-                                textDecoration: "line-through",
-                                marginLeft: 6,
-                              }}
-                            >
-                              ৳{item.discountPrice}
-                            </span>
-                          )}
-                        </div>
-
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (item.availability === "Sold Out") return;
-                            addItem({
-                              id: item.id,
-                              name: item.name,
-                              price: item.discountPrice ?? item.price,
-                              originalPrice: item.price,
-                              imageUrl: item.imageUrl || getItemImageUrl(item.name),
-                              cafeteriaId: item.cafeteriaId || "central-cafeteria",
-                              cafeteriaName: item.cafeteriaName || data?.radar?.cafeteriaName || "CoU Central Cafeteria",
-                              preparationTimeMinutes: item.preparationTime,
-                            });
-                            setAddedItemIds((prev) => ({ ...prev, [item.id]: true }));
-                            setTimeout(() => {
-                              setAddedItemIds((prev) => ({ ...prev, [item.id]: false }));
-                            }, 1800);
-                          }}
-                          disabled={item.availability === "Sold Out"}
-                          style={{
-                            width: 34,
-                            height: 34,
-                            borderRadius: "50%",
-                            border: "none",
-                            cursor: item.availability === "Sold Out" ? "not-allowed" : "pointer",
-                            background:
-                              item.availability === "Sold Out"
-                                ? "var(--surface-2)"
-                                : addedItemIds[item.id]
-                                  ? "#059669"
-                                  : "var(--primary)",
-                            color:
-                              item.availability === "Sold Out"
-                                ? "var(--txt-muted)"
-                                : "#FFFFFF",
-                            fontSize: addedItemIds[item.id] ? 14 : 18,
-                            fontWeight: 700,
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            transition: "all 150ms ease",
-                            boxShadow: item.availability === "Sold Out" ? "none" : "var(--shadow-primary)",
-                          }}
-                          title={addedItemIds[item.id] ? "Added to cart!" : `Add ${item.name} to cart`}
-                          aria-label={`Add ${item.name} to cart`}
-                        >
-                          {addedItemIds[item.id] ? "✓" : "＋"}
-                        </button>
-                      </div>
-                    </div>
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
 
-          { }
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* 22. DineX Smart Pick */}
-            <div
-              style={{
-                background: "var(--surface)",
-                borderRadius: 22,
-                border: "1px solid var(--border)",
-                padding: "22px",
-                display: "flex",
-                flexDirection: "column",
-                justifyContent: "space-between",
-                boxShadow: "var(--shadow-card)",
-              }}
-            >
-              <div>
-                <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 12 }}>
-                  <Sparkles size={16} color="var(--accent)" />
-                  <span
-                    style={{
-                      fontSize: 12,
-                      fontWeight: 800,
-                      color: "var(--accent)",
-                      textTransform: "uppercase",
-                      letterSpacing: "0.06em",
-                    }}
-                  >
-                    BEST MATCH FOR YOU
-                  </span>
+                  {/* Daily Special */}
+                  {item.isDailySpecial && (
+                    <div style={{
+                      position: "absolute", top: 8, right: 8,
+                      fontSize: 10, fontWeight: 700, padding: "3px 8px",
+                      borderRadius: 8, background: "rgba(245,158,11,0.95)", color: "#fff",
+                    }}>
+                      ⭐ Special
+                    </div>
+                  )}
+
+                  {/* Discount Badge */}
+                  {item.discountPrice && item.discountPrice < item.price && (
+                    <div style={{
+                      position: "absolute", bottom: 8, left: 8,
+                      fontSize: 10, fontWeight: 800, padding: "3px 8px",
+                      borderRadius: 8, background: "rgba(220,38,38,0.9)", color: "#fff",
+                    }}>
+                      -{Math.round(((item.price - item.discountPrice) / item.price) * 100)}%
+                    </div>
+                  )}
                 </div>
 
-                <h4 style={{ fontSize: 16, fontWeight: 900, color: "var(--txt)", margin: "0 0 6px 0" }}>
-                  {data.recommendation.name}
-                </h4>
-
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-                  <span style={{ fontSize: 20, fontWeight: 900, color: "var(--primary)" }}>
-                    ৳{data.recommendation.price}
-                  </span>
-                  <span style={{ fontSize: 13, color: "var(--txt-muted)", textDecoration: "line-through" }}>
-                    ৳{data.recommendation.originalPrice}
-                  </span>
-                  <span
-                    style={{
-                      fontSize: 11,
-                      fontWeight: 700,
-                      background: "rgba(245, 158, 11, 0.15)",
-                      color: "#D97706",
-                      padding: "2px 8px",
-                      borderRadius: 6,
-                    }}
-                  >
-                    Save ৳{data.recommendation.originalPrice - data.recommendation.price}
-                  </span>
-                </div>
-
-                {/* AI Reason Badges (SRS Section 22) */}
-                <div className="flex flex-wrap gap-2 mb-4">
-                  <span
-                    style={{
-                      fontSize: 11,
-                      fontWeight: 600,
-                      padding: "3px 8px",
-                      borderRadius: 6,
-                      background: "var(--surface-2)",
-                      color: "var(--txt-2)",
-                    }}
-                  >
-                    ✓ Within budget
-                  </span>
-                  <span
-                    style={{
-                      fontSize: 11,
-                      fontWeight: 600,
-                      padding: "3px 8px",
-                      borderRadius: 6,
-                      background: "var(--surface-2)",
-                      color: "var(--txt-2)",
-                    }}
-                  >
-                    ✓ Fast (~12 min)
-                  </span>
-                  <span
-                    style={{
-                      fontSize: 11,
-                      fontWeight: 600,
-                      padding: "3px 8px",
-                      borderRadius: 6,
-                      background: "rgba(16, 185, 129, 0.1)",
-                      color: "#10B981",
-                    }}
-                  >
-                    ✓ Available now
-                  </span>
-                </div>
-              </div>
-
-              <Link
-                href="/explore"
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 6,
-                  padding: "10px",
-                  borderRadius: 12,
-                  background: "var(--primary)",
-                  color: "#FFFFFF",
-                  fontSize: 13,
-                  fontWeight: 700,
-                  textDecoration: "none",
-                  boxShadow: "var(--shadow-primary)",
-                }}
-              >
-                Order this <ArrowRight size={14} />
-              </Link>
-            </div>
-
-            {/* 17. Smart Queue & Active Order Status */}
-            <div
-              style={{
-                background: "var(--surface)",
-                borderRadius: 22,
-                border: "1px solid var(--border)",
-                padding: "22px",
-                display: "flex",
-                flexDirection: "column",
-                justifyContent: "space-between",
-                boxShadow: "var(--shadow-card)",
-              }}
-            >
-              <div>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-                  <h4 style={{ fontSize: 15, fontWeight: 800, color: "var(--txt)", margin: 0 }}>
-                    {data.activeOrder ? "Live Order Tracking" : "Cafeteria Queue Status"}
+                {/* Info */}
+                <div style={{ padding: "12px 14px" }}>
+                  <h4 style={{
+                    fontSize: 14, fontWeight: 700, color: "var(--txt)",
+                    margin: "0 0 6px", lineHeight: 1.3,
+                    overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                  }}>
+                    {item.name}
                   </h4>
-                  <span
-                    style={{
-                      fontSize: 11,
-                      fontWeight: 700,
-                      padding: "2px 8px",
-                      borderRadius: 6,
-                      background: "rgba(16, 185, 129, 0.12)",
-                      color: "#10B981",
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: 6,
-                    }}
-                  >
-                    <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#10B981" }} />
-                    Normal Queue
-                  </span>
-                </div>
 
-                {data.activeOrder ? (
-                  <div className="space-y-3">
-                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
-                      <span style={{ color: "var(--txt-muted)" }}>Order ID</span>
-                      <span style={{ fontWeight: 800, color: "var(--txt)" }}>
-                        #{data.activeOrder.orderNumber}
-                      </span>
-                    </div>
-
-                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
-                      <span style={{ color: "var(--txt-muted)" }}>Status</span>
-                      <span style={{ fontWeight: 800, color: "var(--warning)" }}>
-                        {data.activeOrder.status.replace(/_/g, " ")}
-                      </span>
-                    </div>
-
-                    {/* Timeline progress indicator */}
-                    <div style={{ background: "var(--surface-2)", padding: "12px", borderRadius: 12 }}>
-                      <div style={{ fontSize: 12, fontWeight: 700, color: "var(--txt)", marginBottom: 4, display: "flex", alignItems: "center", gap: 6 }}>
-                        <ChefHat size={14} className="text-amber-500" /> Your food is being prepared
-                      </div>
-                      <div style={{ fontSize: 11, color: "var(--txt-muted)" }}>
-                        Estimated wait: ~{data.activeOrder.estimatedTimeMinutes} minutes
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    <div style={{ background: "var(--surface-2)", padding: "14px", borderRadius: 14 }}>
-                      <div style={{ fontSize: 11, color: "var(--txt-muted)", fontWeight: 700, textTransform: "uppercase" }}>
-                        CURRENT QUEUE
-                      </div>
-                      <div style={{ fontSize: 17, fontWeight: 900, color: "var(--txt)", marginTop: 4 }}>
-                        {String(smartQueueTelemetry?.totalOrders ?? 8).padStart(2, "0")} active orders in queue
-                      </div>
-                      <div style={{ fontSize: 12, color: "var(--txt-2)", marginTop: 4 }}>
-                        Estimated prep time: <strong>~{smartQueueTelemetry?.estimatedPrepMinutes ?? 11} min</strong>
-                      </div>
-                    </div>
-                    <div style={{ background: "rgba(15, 118, 110, 0.08)", border: "1px solid rgba(15, 118, 110, 0.2)", borderRadius: 12, padding: "10px 12px", fontSize: 12, color: "var(--txt)" }}>
-                      <div style={{ fontSize: 10, fontWeight: 800, color: "var(--primary)", textTransform: "uppercase", marginBottom: 2 }}>
-                        SUGGESTED ORDER TIME
-                      </div>
-                      <div>
-                        {smartQueueTelemetry?.suggestedOrderTime ?? "Order now for minimum wait (~12 min)"}
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <Link
-                href="/orders"
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 6,
-                  padding: "10px",
-                  borderRadius: 12,
-                  background: "var(--surface-2)",
-                  border: "1px solid var(--border)",
-                  color: "var(--txt)",
-                  fontSize: 13,
-                  fontWeight: 600,
-                  textDecoration: "none",
-                  marginTop: 14,
-                }}
-              >
-                <History size={15} /> View Order History
-              </Link>
-            </div>
-
-            {/* 21. Rewards & 24. Eco Dashboard */}
-            <div
-              style={{
-                background: "var(--surface)",
-                borderRadius: 22,
-                border: "1px solid var(--border)",
-                padding: "22px",
-                display: "flex",
-                flexDirection: "column",
-                justifyContent: "space-between",
-                boxShadow: "var(--shadow-card)",
-              }}
-            >
-              <div>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    <Award size={18} color="var(--accent)" />
-                    <h4 style={{ fontSize: 15, fontWeight: 800, color: "var(--txt)", margin: 0 }}>
-                      Dine Points & Eco Score
-                    </h4>
-                  </div>
-                  <Link
-                    href="/rewards"
-                    style={{ fontSize: 12, fontWeight: 700, color: "var(--primary)", textDecoration: "none" }}
-                  >
-                    Redeem
-                  </Link>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3 mb-4">
-                  <div
-                    style={{
-                      background: "var(--surface-2)",
-                      padding: "12px 14px",
-                      borderRadius: 14,
-                      border: "1px solid var(--border)",
-                    }}
-                  >
-                    <div style={{ fontSize: 11, color: "var(--txt-muted)", fontWeight: 600, display: "flex", alignItems: "center", gap: 5 }}>
-                      <Award size={13} className="text-amber-500" /> Dine Points
-                    </div>
-                    <div style={{ fontSize: 22, fontWeight: 900, color: "var(--primary)", marginTop: 4 }}>
-                      {data.rewards.points}
-                    </div>
-                  </div>
-
-                  <div
-                    style={{
-                      background: "var(--surface-2)",
-                      padding: "12px 14px",
-                      borderRadius: 14,
-                      border: "1px solid var(--border)",
-                    }}
-                  >
-                    <div style={{ fontSize: 11, color: "var(--txt-muted)", fontWeight: 600, display: "flex", alignItems: "center", gap: 5 }}>
-                      <Leaf size={13} className="text-emerald-500" /> Eco Score
-                    </div>
-                    <div style={{ fontSize: 22, fontWeight: 900, color: "#10B981", marginTop: 4 }}>
-                      {data.rewards.ecoScore}{" "}
-                      <span style={{ fontSize: 12, fontWeight: 500, color: "var(--txt-muted)" }}>/ 100</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Progress bar to next reward */}
-                <div>
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, marginBottom: 6 }}>
-                    <span style={{ color: "var(--txt-2)", fontWeight: 600 }}>
-                      Next: {data.rewards.nextReward}
+                  <div style={{
+                    display: "flex", alignItems: "center", gap: 8,
+                    fontSize: 11, color: "var(--txt-muted)", marginBottom: 10,
+                  }}>
+                    <span style={{ display: "flex", alignItems: "center", gap: 3 }}>
+                      <Star size={11} color="#F59E0B" fill="#F59E0B" /> {item.rating}
                     </span>
-                    <span style={{ color: "var(--txt-muted)", fontWeight: 600 }}>
-                      {data.rewards.pointsNeeded} pts left
+                    <span>·</span>
+                    <span style={{ display: "flex", alignItems: "center", gap: 3 }}>
+                      <Timer size={11} /> {item.preparationTime}m
                     </span>
                   </div>
-                  <div
-                    style={{
-                      height: 8,
-                      borderRadius: 99,
-                      background: "var(--surface-2)",
-                      overflow: "hidden",
-                    }}
-                  >
-                    <div
-                      style={{
-                        height: "100%",
-                        width: `${data.rewards.progressPercent}%`,
-                        background: "linear-gradient(90deg, var(--primary), var(--accent))",
-                        borderRadius: 99,
-                      }}
-                    />
-                  </div>
-                </div>
-              </div>
 
-              {/* Eco Impact Note */}
-              <div
-                style={{
-                  fontSize: 11,
-                  color: "var(--txt-muted)",
-                  background: "var(--surface-2)",
-                  padding: "8px 12px",
-                  borderRadius: 10,
-                  marginTop: 14,
-                }}
-              >
-                14 plastic items avoided • 6 reusable choices
-              </div>
-            </div>
-          </div>
-
-          { }
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Student Discounts */}
-            <div
-              style={{
-                background: "var(--surface)",
-                borderRadius: 22,
-                border: "1px solid var(--border)",
-                padding: "22px",
-                boxShadow: "var(--shadow-card)",
-              }}
-            >
-              <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 14 }}>
-                <Percent size={17} color="var(--primary)" />
-                <h4 style={{ fontSize: 16, fontWeight: 800, color: "var(--txt)", margin: 0 }}>
-                  Campus Offers & Discounts
-                </h4>
-              </div>
-
-              <div className="space-y-3">
-                {data.offers.map((offer) => (
-                  <div
-                    key={offer.id}
-                    style={{
-                      background: "var(--surface-2)",
-                      borderRadius: 16,
-                      padding: "14px 16px",
-                      border: "1px solid var(--border)",
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                    }}
-                  >
+                  {/* Price + Add */}
+                  <div style={{
+                    display: "flex", alignItems: "center", justifyContent: "space-between",
+                  }}>
                     <div>
-                      <span
-                        style={{
-                          fontSize: 10,
-                          fontWeight: 800,
-                          padding: "2px 8px",
-                          borderRadius: 6,
-                          background: "rgba(15, 118, 110, 0.12)",
-                          color: "var(--primary)",
-                        }}
-                      >
-                        {offer.badge}
+                      <span style={{ fontSize: 16, fontWeight: 900, color: "var(--primary)" }}>
+                        ৳{item.discountPrice ?? item.price}
                       </span>
-                      <div style={{ fontSize: 13, fontWeight: 800, color: "var(--txt)", marginTop: 5 }}>
-                        {offer.title}
-                      </div>
-                      <div style={{ fontSize: 11, color: "var(--txt-muted)", marginTop: 2 }}>
-                        {offer.description}
-                      </div>
+                      {item.discountPrice && item.discountPrice < item.price && (
+                        <span style={{
+                          fontSize: 11, color: "var(--txt-muted)",
+                          textDecoration: "line-through", marginLeft: 4,
+                        }}>
+                          ৳{item.price}
+                        </span>
+                      )}
                     </div>
 
                     <button
-                      onClick={() => handleCopyCode(offer.code)}
+                      type="button"
+                      onClick={() => handleAddToCart(item)}
+                      disabled={item.availability === "Sold Out"}
+                      aria-label={`Add ${item.name}`}
                       style={{
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: 4,
-                        border: "1px solid var(--border)",
-                        background: "var(--surface)",
-                        color: "var(--primary)",
-                        fontSize: 11,
-                        fontWeight: 700,
-                        padding: "6px 10px",
-                        borderRadius: 8,
-                        cursor: "pointer",
-                        flexShrink: 0,
+                        width: 32, height: 32, borderRadius: 10, border: "none",
+                        cursor: item.availability === "Sold Out" ? "not-allowed" : "pointer",
+                        background: item.availability === "Sold Out"
+                          ? "var(--surface-2)" : addedItemIds[item.id]
+                            ? "#059669" : "var(--primary)",
+                        color: item.availability === "Sold Out" ? "var(--txt-muted)" : "#fff",
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        transition: "all 150ms",
+                        boxShadow: item.availability !== "Sold Out" ? "0 4px 12px rgba(15,118,110,0.3)" : "none",
                       }}
                     >
-                      {copiedCode === offer.code ? (
-                        <>
-                          <Check size={12} /> Copied
-                        </>
-                      ) : (
-                        <>
-                          <Copy size={12} /> {offer.code}
-                        </>
-                      )}
+                      {addedItemIds[item.id] ? <Check size={16} /> : <Plus size={16} />}
                     </button>
                   </div>
-                ))}
+                </div>
               </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Recommendation Card */}
+      {data.recommendation && (
+        <div style={{
+          display: "flex", gap: 16, padding: "18px", marginBottom: 24,
+          borderRadius: 18, background: "var(--surface)",
+          border: "1px solid var(--border)",
+          boxShadow: "0 2px 12px rgba(0,0,0,0.04)",
+        }}
+          className="flex-col sm:flex-row sm:items-center"
+        >
+          <div style={{
+            width: 80, height: 80, borderRadius: 14, background: "var(--surface-2)",
+            flexShrink: 0, position: "relative", overflow: "hidden",
+          }}>
+            <Image
+              src={getItemImageUrl(data.recommendation.name)}
+              alt={data.recommendation.name}
+              fill
+              className="object-cover"
+              sizes="80px"
+            />
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{
+              fontSize: 10, fontWeight: 800, color: "#F59E0B",
+              textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4,
+              display: "flex", alignItems: "center", gap: 4,
+            }}>
+              <Sparkles size={12} /> Best Match
             </div>
-
-            {/* Recent Orders List */}
-            <div
-              style={{
-                background: "var(--surface)",
-                borderRadius: 22,
-                border: "1px solid var(--border)",
-                padding: "22px",
-                boxShadow: "var(--shadow-card)",
-              }}
-            >
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-                <h4 style={{ fontSize: 16, fontWeight: 800, color: "var(--txt)", margin: 0 }}>
-                  Recent Orders
-                </h4>
-                <Link
-                  href="/orders"
-                  style={{ fontSize: 12, fontWeight: 700, color: "var(--primary)", textDecoration: "none" }}
-                >
-                  View All Orders
-                </Link>
-              </div>
-
-              {data.recentOrders.length === 0 ? (
-                <div
-                  style={{
-                    textAlign: "center",
-                    padding: "32px 16px",
-                    background: "var(--surface-2)",
-                    borderRadius: 16,
-                  }}
-                >
-                  <ShoppingBag size={28} color="var(--txt-muted)" className="mx-auto mb-2 opacity-50" />
-                  <p style={{ fontSize: 13, color: "var(--txt-muted)", margin: 0 }}>
-                    No past orders yet. Central Cafeteria is waiting for your first order!
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {data.recentOrders.map((ro) => (
-                    <div
-                      key={ro.id}
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        padding: "12px 14px",
-                        borderRadius: 14,
-                        background: "var(--surface-2)",
-                        border: "1px solid var(--border)",
-                      }}
-                    >
-                      <div>
-                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                          <span style={{ fontWeight: 800, fontSize: 13, color: "var(--txt)" }}>
-                            Order #{ro.orderNumber}
-                          </span>
-                          <span
-                            style={{
-                              fontSize: 10,
-                              fontWeight: 700,
-                              padding: "2px 6px",
-                              borderRadius: 6,
-                              background: "rgba(16, 185, 129, 0.12)",
-                              color: "#10B981",
-                            }}
-                          >
-                            {ro.status.replace(/_/g, " ")}
-                          </span>
-                        </div>
-                        <div style={{ fontSize: 11, color: "var(--txt-muted)", marginTop: 3 }}>
-                          {ro.itemsSummary || `${ro.itemCount} item(s)`}
-                        </div>
-                      </div>
-
-                      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                        <span style={{ fontSize: 14, fontWeight: 900, color: "var(--txt)" }}>
-                          ৳{ro.totalAmount}
-                        </span>
-                        <Link
-                          href={`/orders/${ro.id}`}
-                          style={{
-                            fontSize: 12,
-                            fontWeight: 700,
-                            color: "var(--primary)",
-                            textDecoration: "none",
-                            padding: "4px 10px",
-                            borderRadius: 8,
-                            background: "var(--surface)",
-                            border: "1px solid var(--border)",
-                          }}
-                        >
-                          Details
-                        </Link>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
+            <h4 style={{ fontSize: 15, fontWeight: 800, color: "var(--txt)", margin: "0 0 4px" }}>
+              {data.recommendation.name}
+            </h4>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: 16, fontWeight: 900, color: "var(--primary)" }}>
+                ৳{data.recommendation.price}
+              </span>
+              <span style={{ fontSize: 12, color: "var(--txt-muted)", textDecoration: "line-through" }}>
+                ৳{data.recommendation.originalPrice}
+              </span>
             </div>
           </div>
-        </>
+          <Link
+            href="/explore"
+            style={{
+              padding: "10px 20px", borderRadius: 12,
+              background: "var(--primary)", color: "#fff",
+              fontWeight: 700, fontSize: 13, textDecoration: "none",
+              display: "flex", alignItems: "center", gap: 6,
+              boxShadow: "0 4px 12px rgba(15,118,110,0.25)",
+              whiteSpace: "nowrap",
+            }}
+          >
+            Order <ArrowRight size={14} />
+          </Link>
+        </div>
+      )}
+
+      {/* Bottom Section: Rewards + Recent Orders */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4" style={{ marginBottom: 24 }}>
+        {/* Rewards */}
+        <div style={{
+          padding: "18px", borderRadius: 18,
+          background: "var(--surface)", border: "1px solid var(--border)",
+        }}>
+          <div style={{
+            display: "flex", alignItems: "center", justifyContent: "space-between",
+            marginBottom: 16,
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <Award size={18} color="#F59E0B" />
+              <span style={{ fontSize: 15, fontWeight: 800, color: "var(--txt)" }}>Rewards</span>
+            </div>
+            <Link
+              href="/rewards"
+              style={{ fontSize: 12, fontWeight: 600, color: "var(--primary)", textDecoration: "none" }}
+            >
+              Redeem
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3" style={{ marginBottom: 14 }}>
+            <div style={{
+              padding: "10px 12px", borderRadius: 12,
+              background: "var(--surface-2)", border: "1px solid var(--border)",
+            }}>
+              <div style={{ fontSize: 11, color: "var(--txt-muted)", fontWeight: 600 }}>Points</div>
+              <div style={{ fontSize: 20, fontWeight: 900, color: "var(--primary)", marginTop: 2 }}>
+                {data.rewards.points}
+              </div>
+            </div>
+            <div style={{
+              padding: "10px 12px", borderRadius: 12,
+              background: "var(--surface-2)", border: "1px solid var(--border)",
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: "var(--txt-muted)", fontWeight: 600 }}>
+                <Leaf size={11} color="#10B981" /> Eco
+              </div>
+              <div style={{ fontSize: 20, fontWeight: 900, color: "#10B981", marginTop: 2 }}>
+                {data.rewards.ecoScore}
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, marginBottom: 6 }}>
+              <span style={{ color: "var(--txt-2)", fontWeight: 600 }}>{data.rewards.nextReward}</span>
+              <span style={{ color: "var(--txt-muted)" }}>{data.rewards.pointsNeeded} pts left</span>
+            </div>
+            <div style={{ height: 6, borderRadius: 99, background: "var(--surface-2)", overflow: "hidden" }}>
+              <div style={{
+                height: "100%", width: `${data.rewards.progressPercent}%`,
+                background: "linear-gradient(90deg, var(--primary), #F59E0B)",
+                borderRadius: 99, transition: "width 500ms ease",
+              }} />
+            </div>
+          </div>
+        </div>
+
+        {/* Recent Orders */}
+        <div style={{
+          padding: "18px", borderRadius: 18,
+          background: "var(--surface)", border: "1px solid var(--border)",
+        }}>
+          <div style={{
+            display: "flex", alignItems: "center", justifyContent: "space-between",
+            marginBottom: 16,
+          }}>
+            <span style={{ fontSize: 15, fontWeight: 800, color: "var(--txt)" }}>Recent Orders</span>
+            <Link
+              href="/orders"
+              style={{ fontSize: 12, fontWeight: 600, color: "var(--primary)", textDecoration: "none" }}
+            >
+              View All
+            </Link>
+          </div>
+
+          {data.recentOrders.length === 0 ? (
+            <div style={{
+              textAlign: "center", padding: "28px 16px",
+              background: "var(--surface-2)", borderRadius: 14,
+            }}>
+              <ShoppingBag size={24} color="var(--txt-muted)" style={{ opacity: 0.4, margin: "0 auto 8px" }} />
+              <p style={{ fontSize: 13, color: "var(--txt-muted)", margin: 0 }}>
+                No orders yet
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {data.recentOrders.slice(0, 3).map((ro) => (
+                <Link
+                  key={ro.id}
+                  href={`/orders/${ro.id}`}
+                  style={{
+                    display: "flex", alignItems: "center", justifyContent: "space-between",
+                    padding: "10px 12px", borderRadius: 12,
+                    background: "var(--surface-2)", border: "1px solid var(--border)",
+                    textDecoration: "none",
+                  }}
+                >
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: "var(--txt)" }}>
+                      #{ro.orderNumber}
+                    </div>
+                    <div style={{ fontSize: 11, color: "var(--txt-muted)", marginTop: 2 }}>
+                      {ro.itemsSummary || `${ro.itemCount} item(s)`}
+                    </div>
+                  </div>
+                  <div style={{ textAlign: "right" }}>
+                    <div style={{ fontSize: 14, fontWeight: 800, color: "var(--txt)" }}>
+                      ৳{ro.totalAmount}
+                    </div>
+                    <span style={{
+                      fontSize: 10, fontWeight: 600, padding: "2px 6px",
+                      borderRadius: 6,
+                      background: ro.status === "DELIVERED" ? "rgba(16,185,129,0.1)" : "rgba(245,158,11,0.1)",
+                      color: ro.status === "DELIVERED" ? "#10B981" : "#D97706",
+                    }}>
+                      {ro.status.replace(/_/g, " ")}
+                    </span>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Offers */}
+      {data.offers.length > 0 && (
+        <div style={{ marginBottom: 24 }}>
+          <h3 style={{ fontSize: 16, fontWeight: 800, color: "var(--txt)", margin: "0 0 12px" }}>
+            Offers
+          </h3>
+          <div style={{ display: "flex", gap: 10, overflowX: "auto", scrollbarWidth: "none", paddingBottom: 4 }}>
+            {data.offers.map((offer) => (
+              <div
+                key={offer.id}
+                style={{
+                  flex: "0 0 auto", minWidth: 240, padding: "16px",
+                  borderRadius: 16, background: "linear-gradient(135deg, #0F766E 0%, #0D9488 100%)",
+                  color: "#fff",
+                }}
+              >
+                <span style={{
+                  fontSize: 10, fontWeight: 800, padding: "2px 8px",
+                  borderRadius: 6, background: "rgba(255,255,255,0.2)",
+                }}>
+                  {offer.badge}
+                </span>
+                <div style={{ fontSize: 15, fontWeight: 800, marginTop: 10 }}>
+                  {offer.title}
+                </div>
+                <div style={{ fontSize: 12, opacity: 0.85, marginTop: 4 }}>
+                  {offer.description}
+                </div>
+                <div style={{
+                  marginTop: 10, padding: "6px 12px", borderRadius: 8,
+                  background: "rgba(255,255,255,0.2)", display: "inline-block",
+                  fontSize: 13, fontWeight: 800, letterSpacing: "0.05em",
+                }}>
+                  {offer.code}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       )}
     </div>
   );

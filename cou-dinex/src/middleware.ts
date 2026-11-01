@@ -3,38 +3,25 @@ import { jwtVerify } from "jose";
 
 const AUTH_COOKIE_NAME = "cou_dinex_session";
 const JWT_SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || "cou-dinex-secure-university-jwt-secret-key-2026-comilla"
+  process.env.JWT_SECRET || "cou-dinex-dev-only-secret-do-not-use-in-production"
 );
-
-// Routes requiring authentication
-const PROTECTED_ROUTES = ["/home", "/profile", "/orders", "/settings", "/cart", "/checkout", "/student"];
 
 // Routes strictly requiring ADMIN role
 const ADMIN_ROUTES = ["/admin"];
 
-// Routes strictly requiring KITCHEN or ADMIN role
-const KITCHEN_ROUTES = ["/kitchen"];
-
-// Routes strictly requiring DELIVERY_AGENT or ADMIN role
-const DELIVERY_ROUTES = ["/delivery"];
-
-// Routes meant for students (staff / riders get redirected to their portal)
-const STUDENT_ROUTES = [
-  "/home",
-  "/explore",
+// Routes requiring authentication for any role
+const AUTH_REQUIRED_ROUTES = [
+  "/profile",
+  "/settings",
   "/cart",
   "/checkout",
   "/orders",
-  "/profile",
-  "/settings",
-  "/rewards",
-  "/campus-map",
-  "/map",
-  "/notifications",
   "/student",
+  "/kitchen",
+  "/delivery",
 ];
 
-// Auth routes (redirect to role default if already logged in)
+// Auth pages (redirect if already logged in)
 const AUTH_PAGES = ["/login", "/register"];
 
 export async function middleware(req: NextRequest) {
@@ -54,7 +41,7 @@ export async function middleware(req: NextRequest) {
     }
   }
 
-  // 1. Root route ("/") — if logged in, send directly to role dashboard
+  // 1. Root route ("/") — if logged in, send directly to role default
   if (pathname === "/") {
     if (isAuthenticated) {
       if (userRole === "DELIVERY_AGENT") {
@@ -71,26 +58,7 @@ export async function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  // 2. Check if navigating to a kitchen route
-  const isKitchenRoute = KITCHEN_ROUTES.some((route) => pathname === route || pathname.startsWith(`${route}/`));
-  if (isKitchenRoute) {
-    if (!isAuthenticated) {
-      const loginUrl = new URL("/login", req.url);
-      loginUrl.searchParams.set("callbackUrl", pathname);
-      return NextResponse.redirect(loginUrl);
-    }
-    // Check if role is kitchen staff or admin
-    if (
-      userRole !== "CAFETERIA_STAFF" &&
-      userRole !== "CAFETERIA_ADMIN" &&
-      userRole !== "SUPER_ADMIN"
-    ) {
-      return NextResponse.redirect(new URL("/home?error=unauthorized_kitchen", req.url));
-    }
-    return NextResponse.next();
-  }
-
-  // 3. Check if navigating to an admin route
+  // 2. Admin routes check (strictly require admin role)
   const isAdminRoute = ADMIN_ROUTES.some((route) => pathname === route || pathname.startsWith(`${route}/`));
   if (isAdminRoute) {
     if (!isAuthenticated) {
@@ -98,57 +66,77 @@ export async function middleware(req: NextRequest) {
       loginUrl.searchParams.set("callbackUrl", pathname);
       return NextResponse.redirect(loginUrl);
     }
-    // Check if role is admin
     if (userRole !== "SUPER_ADMIN" && userRole !== "CAFETERIA_ADMIN") {
       return NextResponse.redirect(new URL("/home?error=unauthorized_admin", req.url));
     }
     return NextResponse.next();
   }
 
-  // 4. Check if navigating to a delivery agent route
-  const isDeliveryRoute = DELIVERY_ROUTES.some((route) => pathname === route || pathname.startsWith(`${route}/`));
-  if (isDeliveryRoute) {
+  // 3. Kitchen routes (require auth; if logged in as student, allow page to display portal with 1-click switch)
+  if (pathname === "/kitchen" || pathname.startsWith("/kitchen/")) {
     if (!isAuthenticated) {
       const loginUrl = new URL("/login", req.url);
       loginUrl.searchParams.set("callbackUrl", pathname);
       return NextResponse.redirect(loginUrl);
     }
-    // Check if role is delivery agent or admin
-    if (
-      userRole !== "DELIVERY_AGENT" &&
-      userRole !== "CAFETERIA_ADMIN" &&
-      userRole !== "SUPER_ADMIN"
-    ) {
+    return NextResponse.next();
+  }
+
+  // 4. Delivery routes (strictly require DELIVERY_AGENT or SUPER_ADMIN role)
+  if (pathname === "/delivery" || pathname.startsWith("/delivery/")) {
+    if (!isAuthenticated) {
+      const loginUrl = new URL("/login", req.url);
+      loginUrl.searchParams.set("callbackUrl", pathname);
+      return NextResponse.redirect(loginUrl);
+    }
+    if (userRole !== "DELIVERY_AGENT" && userRole !== "SUPER_ADMIN") {
       return NextResponse.redirect(new URL("/home?error=unauthorized_delivery", req.url));
     }
     return NextResponse.next();
   }
 
-  // 5. Check if navigating to a student route
-  const isStudentRoute = STUDENT_ROUTES.some((route) => pathname === route || pathname.startsWith(`${route}/`));
-  if (isStudentRoute) {
-    if (!isAuthenticated) {
-      const loginUrl = new URL("/login", req.url);
-      loginUrl.searchParams.set("callbackUrl", pathname);
-      return NextResponse.redirect(loginUrl);
-    }
-    // Kitchen staff should always be redirected to kitchen display
-    if (userRole === "CAFETERIA_STAFF") {
-      return NextResponse.redirect(new URL("/kitchen", req.url));
-    }
-    // Delivery agent should always be redirected to delivery portal
+  // 5. Operational role redirect for customer ordering routes
+  const CUSTOMER_ONLY_ROUTES = ["/home", "/explore", "/campus-map", "/cart", "/checkout"];
+  const isCustomerRoute = CUSTOMER_ONLY_ROUTES.some(
+    (route) => pathname === route || pathname.startsWith(`${route}/`)
+  );
+  if (isCustomerRoute && isAuthenticated) {
     if (userRole === "DELIVERY_AGENT") {
       return NextResponse.redirect(new URL("/delivery", req.url));
     }
-    // Admin should always be redirected to admin dashboard
-    if (userRole === "SUPER_ADMIN" || userRole === "CAFETERIA_ADMIN") {
-      return NextResponse.redirect(new URL("/admin", req.url));
+    if (userRole === "CAFETERIA_STAFF") {
+      return NextResponse.redirect(new URL("/kitchen", req.url));
     }
   }
 
-  // 6. Check if logged-in user is accessing login or register pages
+  // 6. Auth-required routes (profile, settings, orders, etc.)
+  const isAuthRequired = AUTH_REQUIRED_ROUTES.some(
+    (route) => pathname === route || pathname.startsWith(`${route}/`)
+  );
+  if (isAuthRequired && !isAuthenticated) {
+    const loginUrl = new URL("/login", req.url);
+    loginUrl.searchParams.set("callbackUrl", pathname);
+    return NextResponse.redirect(loginUrl);
+  }
+
+  // 7. Auth pages (login, register) — redirect logged-in users away from login
   const isAuthPage = AUTH_PAGES.some((page) => pathname === page || pathname.startsWith(`${page}/`));
   if (isAuthPage && isAuthenticated) {
+    const callback = req.nextUrl.searchParams.get("callbackUrl");
+    if (callback && callback !== "/" && !callback.startsWith("/login")) {
+      // Prevent role-mismatch callback redirects (e.g. student trapped in /kitchen callback)
+      const isStudent = userRole === "STUDENT" || userRole === "VISITOR" || userRole === "FACULTY" || userRole === "STAFF";
+      if (isStudent && (callback.startsWith("/kitchen") || callback.startsWith("/delivery") || callback.startsWith("/admin"))) {
+        return NextResponse.redirect(new URL("/home", req.url));
+      }
+      if (userRole === "DELIVERY_AGENT" && (callback.startsWith("/kitchen") || callback.startsWith("/admin"))) {
+        return NextResponse.redirect(new URL("/delivery", req.url));
+      }
+      if (userRole === "CAFETERIA_STAFF" && (callback.startsWith("/delivery") || callback.startsWith("/admin"))) {
+        return NextResponse.redirect(new URL("/kitchen", req.url));
+      }
+      return NextResponse.redirect(new URL(callback, req.url));
+    }
     if (userRole === "CAFETERIA_STAFF") {
       return NextResponse.redirect(new URL("/kitchen", req.url));
     }
@@ -177,26 +165,18 @@ export const config = {
     "/home/:path*",
     "/explore",
     "/explore/:path*",
-    "/orders",
-    "/orders/:path*",
+    "/campus-map",
+    "/campus-map/:path*",
     "/cart",
     "/cart/:path*",
     "/checkout",
     "/checkout/:path*",
+    "/orders",
+    "/orders/:path*",
     "/profile",
     "/profile/:path*",
     "/settings",
     "/settings/:path*",
-    "/rewards",
-    "/rewards/:path*",
-    "/campus-map",
-    "/campus-map/:path*",
-    "/map",
-    "/map/:path*",
-    "/notifications",
-    "/notifications/:path*",
-    "/student",
-    "/student/:path*",
     "/login",
     "/register",
     "/register/:path*",

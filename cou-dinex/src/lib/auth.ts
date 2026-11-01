@@ -5,9 +5,18 @@ import { prisma } from "./prisma";
 import { Role } from "@prisma/client";
 
 export const AUTH_COOKIE_NAME = "cou_dinex_session";
-const JWT_SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || "cou-dinex-secure-university-jwt-secret-key-2026-comilla"
-);
+
+function getJwtSecret(): Uint8Array {
+  const secret = process.env.JWT_SECRET;
+  if (!secret && process.env.NODE_ENV === "production") {
+    throw new Error("JWT_SECRET environment variable is required in production");
+  }
+  return new TextEncoder().encode(
+    secret || "cou-dinex-dev-only-secret-do-not-use-in-production"
+  );
+}
+
+const JWT_SECRET = getJwtSecret();
 
 export interface AuthSessionPayload {
   userId: string;

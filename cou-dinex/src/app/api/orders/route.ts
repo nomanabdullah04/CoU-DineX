@@ -424,6 +424,7 @@ export async function GET(req: NextRequest) {
           },
         },
         payment: { select: { status: true, method: true } },
+        deliveryTracking: true,
       },
       orderBy: { createdAt: "desc" },
     });

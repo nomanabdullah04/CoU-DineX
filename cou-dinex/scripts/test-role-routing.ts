@@ -1,7 +1,7 @@
 import { SignJWT } from "jose";
 
 const JWT_SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || "cou-dinex-secure-university-jwt-secret-key-2026-comilla"
+  process.env.JWT_SECRET || "cou-dinex-dev-only-secret-do-not-use-in-production"
 );
 
 async function createToken(userId: string, role: string) {

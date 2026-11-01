@@ -128,7 +128,7 @@ export async function POST(req: NextRequest) {
       {
         success: true,
         message:
-          "Your account has been created and is waiting for university verification.",
+          "Account created successfully! Please check your email to verify your account.",
         user: {
           id: newUser.id,
           fullName: newUser.fullName,

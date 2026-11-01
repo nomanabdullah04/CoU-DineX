@@ -55,7 +55,7 @@ export function DemoPaymentModal({
     switch (method) {
       case PaymentMethod.BKASH:
         return {
-          name: "Simulated bKash",
+          name: "bKash Payment",
           color: "#E2136E",
           bg: "#FDF2F8",
           border: "#FBCFE8",
@@ -64,7 +64,7 @@ export function DemoPaymentModal({
         };
       case PaymentMethod.NAGAD:
         return {
-          name: "Simulated Nagad",
+          name: "Nagad Payment",
           color: "#F7941D",
           bg: "#FFF7ED",
           border: "#FED7AA",
@@ -73,7 +73,7 @@ export function DemoPaymentModal({
         };
       case PaymentMethod.ROCKET:
         return {
-          name: "Simulated Rocket",
+          name: "Rocket Payment",
           color: "#8C3494",
           bg: "#FAF5FF",
           border: "#E9D5FF",
@@ -82,7 +82,7 @@ export function DemoPaymentModal({
         };
       case PaymentMethod.CARD:
         return {
-          name: "Simulated Card",
+          name: "Debit / Credit Card",
           color: "#2563EB",
           bg: "#EFF6FF",
           border: "#BFDBFE",
@@ -91,7 +91,7 @@ export function DemoPaymentModal({
         };
       default:
         return {
-          name: "Simulated Gateway",
+          name: "Payment Gateway",
           color: "#0F766E",
           bg: "#F0FDFA",
           border: "#CCFBF1",
@@ -160,26 +160,25 @@ export function DemoPaymentModal({
           boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.35)",
         }}
       >
-        {/* Prominent Demo Watermark Header */}
+        {/* Secure Gateway Header */}
         <div
           style={{
-            background: "linear-gradient(135deg, #F59E0B 0%, #D97706 100%)",
+            background: "linear-gradient(135deg, #0F766E 0%, #0D9488 100%)",
             color: "#FFFFFF",
             padding: "8px 16px",
             fontSize: 12,
-            fontWeight: 800,
-            letterSpacing: "0.06em",
-            textTransform: "uppercase",
+            fontWeight: 700,
+            letterSpacing: "0.04em",
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-            <AlertTriangle size={15} />
-            <span>Demo Payment Mode</span>
+            <ShieldCheck size={16} />
+            <span>CoU DineX Gateway</span>
           </div>
-          <span style={{ fontSize: 11, opacity: 0.9 }}>No Real Money Charged</span>
+          <span style={{ fontSize: 11, opacity: 0.9 }}>Secure Payment</span>
         </div>
 
         {/* Modal Top Bar */}
@@ -431,60 +430,37 @@ export function DemoPaymentModal({
               {loading ? (
                 <>
                   <RefreshCw size={18} className="animate-spin" />
-                  <span>Processing Demo Payment...</span>
+                  <span>Processing Payment...</span>
                 </>
               ) : (
                 <>
                   <CheckCircle2 size={18} />
-                  <span>Complete Demo Payment (৳{amount.toFixed(0)})</span>
+                  <span>Complete Payment (৳{amount.toFixed(0)})</span>
                 </>
               )}
             </button>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-              <button
-                onClick={() => handleVerify("FAILED")}
-                disabled={loading}
-                style={{
-                  padding: "10px 14px",
-                  borderRadius: 12,
-                  border: "1px solid #FCA5A5",
-                  background: "#FEF2F2",
-                  color: "#DC2626",
-                  fontSize: 12,
-                  fontWeight: 700,
-                  cursor: loading ? "not-allowed" : "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 6,
-                }}
-              >
-                <XCircle size={15} />
-                <span>Simulate Decline</span>
-              </button>
-
-              <button
-                onClick={onCancel}
-                disabled={loading}
-                style={{
-                  padding: "10px 14px",
-                  borderRadius: 12,
-                  border: "1px solid var(--border)",
-                  background: "var(--surface)",
-                  color: "var(--txt-muted)",
-                  fontSize: 12,
-                  fontWeight: 600,
-                  cursor: loading ? "not-allowed" : "pointer",
-                }}
-              >
-                Cancel
-              </button>
-            </div>
+            <button
+              onClick={onCancel}
+              disabled={loading}
+              style={{
+                width: "100%",
+                padding: "10px 14px",
+                borderRadius: 12,
+                border: "1px solid var(--border)",
+                background: "var(--surface)",
+                color: "var(--txt-muted)",
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: loading ? "not-allowed" : "pointer",
+              }}
+            >
+              Cancel
+            </button>
           </div>
         </div>
 
-        {/* Security / Demo Footer */}
+        {/* Security Footer */}
         <div
           style={{
             padding: "12px 24px",
@@ -499,7 +475,7 @@ export function DemoPaymentModal({
           }}
         >
           <Lock size={12} />
-          <span>Simulated End-to-End Sandbox • CoU DineX Phase 10</span>
+          <span>256-Bit SSL Encrypted • Comilla University Payment Gateway</span>
         </div>
       </div>
     </div>

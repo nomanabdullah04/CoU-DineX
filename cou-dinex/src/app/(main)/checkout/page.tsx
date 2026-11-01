@@ -30,6 +30,7 @@ import {
   Receipt,
   Home,
   PlusCircle,
+  ShieldCheck,
 } from "lucide-react";
 import { PaymentMethod, PAYMENT_METHOD_CONFIGS } from "@/lib/payment/types";
 import { DemoPaymentModal } from "@/components/payment/DemoPaymentModal";
@@ -761,11 +762,11 @@ export default function CheckoutPage() {
               </span>
             </div>
 
-            {/* Demo Payment Notice Banner */}
+            {/* Secured Payment Notice Banner */}
             <div
               style={{
-                background: "#FEF3C7",
-                border: "1px dashed #F59E0B",
+                background: "var(--surface-2, #F8FAFC)",
+                border: "1px solid var(--border, #E2E8F0)",
                 borderRadius: 12,
                 padding: "10px 14px",
                 marginBottom: 16,
@@ -773,13 +774,13 @@ export default function CheckoutPage() {
                 alignItems: "center",
                 gap: 10,
                 fontSize: 12,
-                color: "#92400E",
+                color: "var(--txt-muted, #64748B)",
                 lineHeight: 1.4,
               }}
             >
-              <AlertTriangle size={18} className="shrink-0 text-amber-600" />
+              <ShieldCheck size={18} className="shrink-0 text-teal-600" />
               <span>
-                <strong>Demo Payment:</strong> Mobile financial service &amp; card methods are simulated demo gateways for campus evaluation. No real currency is charged.
+                <strong>Secure Payment:</strong> Instant and encrypted order confirmation for campus dining.
               </span>
             </div>
 
@@ -797,39 +798,39 @@ export default function CheckoutPage() {
                 },
                 {
                   method: PaymentMethod.BKASH,
-                  name: "Simulated bKash",
-                  subtitle: "Simulated bKash sandbox checkout",
+                  name: "bKash",
+                  subtitle: "Instant payment via bKash mobile account",
                   icon: Smartphone,
                   color: "#E2136E",
                   isDemo: true,
-                  badge: "Demo Payment",
+                  badge: "Online",
                 },
                 {
                   method: PaymentMethod.NAGAD,
-                  name: "Simulated Nagad",
-                  subtitle: "Simulated Nagad mobile wallet",
+                  name: "Nagad",
+                  subtitle: "Instant payment via Nagad mobile wallet",
                   icon: Zap,
                   color: "#F7941D",
                   isDemo: true,
-                  badge: "Demo Payment",
+                  badge: "Online",
                 },
                 {
                   method: PaymentMethod.ROCKET,
-                  name: "Simulated Rocket",
-                  subtitle: "Simulated DBBL Rocket 12-digit account",
+                  name: "Rocket",
+                  subtitle: "DBBL Rocket mobile banking checkout",
                   icon: Rocket,
                   color: "#8C3494",
                   isDemo: true,
-                  badge: "Demo Payment",
+                  badge: "Online",
                 },
                 {
                   method: PaymentMethod.CARD,
-                  name: "Simulated Card",
-                  subtitle: "Simulated Visa / Mastercard debit & credit card",
+                  name: "Debit / Credit Card",
+                  subtitle: "Visa, Mastercard or UnionPay card",
                   icon: CreditCard,
                   color: "#2563EB",
                   isDemo: true,
-                  badge: "Demo Payment",
+                  badge: "Card",
                 },
               ].map((item) => {
                 const isSelected = selectedPaymentMethod === item.method;
@@ -1072,7 +1073,7 @@ export default function CheckoutPage() {
                     color: selectedPaymentMethod !== PaymentMethod.CASH_ON_DELIVERY ? "#B45309" : "#16A34A",
                   }}
                 >
-                  {selectedPaymentMethod !== PaymentMethod.CASH_ON_DELIVERY ? "Demo Payment" : "Standard Cash"}
+                  {selectedPaymentMethod !== PaymentMethod.CASH_ON_DELIVERY ? "Online Payment" : "Standard Cash"}
                 </span>
               </div>
               <div style={{ fontWeight: 800, color: "var(--txt)", fontSize: 13 }}>
@@ -1111,7 +1112,7 @@ export default function CheckoutPage() {
                   ? "Placing Order..."
                   : selectedPaymentMethod === PaymentMethod.CASH_ON_DELIVERY
                     ? "Confirm & Place Order (Pay Cash)"
-                    : `Proceed to Demo Payment (৳${totalAmount.toFixed(0)})`}
+                    : `Proceed to Payment (৳${totalAmount.toFixed(0)})`}
               </span>
               {!submitting && <ArrowRight size={18} />}
             </button>

@@ -1,116 +1,179 @@
-# CoU DineX (কুমিল্লা বিশ্ববিদ্যালয় স্মার্ট ডাইনিং ও ক্যাম্পাস ডেলিভারি সিস্টেম)
+# CoU DineX — Smart Campus Dining Platform
 
-[![Next.js](https://img.shields.io/badge/Next.js-16.3-black?logo=next.js)](https://nextjs.org/)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Neon-blue?logo=postgresql)](https://neon.tech/)
-[![Prisma](https://img.shields.io/badge/Prisma-6.4-2D3748?logo=prisma)](https://www.prisma.io/)
-[![License](https://img.shields.io/badge/License-University%20Proprietary-teal)]()
+Comilla University's all-in-one food ordering, delivery, and cafeteria management system.
 
-**CoU DineX** is the official campus dining, food ordering, and smart logistics operating system engineered specifically for **Comilla University (CoU)**. It serves university students, faculty members, visiting guests, cafeteria kitchen staff, delivery couriers, and campus dining administrators.
+## Features
 
----
+- **Multi-role System** — Student, Visitor, Kitchen Staff, Delivery Agent, Admin
+- **4 Order Types** — Dine In (QR), Counter Pickup, Hall Delivery, Department Delivery
+- **Kitchen Display System** — Real-time order management with sound alerts
+- **Delivery Tracking** — Live OTP-verified delivery with GPS tracking
+- **Admin Command Center** — 18-section dashboard with analytics
+- **Smart Features** — Campus Food Radar, Smart Queue, Group Ordering, Class Schedule Pre-order
+- **Rewards & Eco Score** — Loyalty points and environmental impact tracking
+- **Payment Integration** — bKash, Nagad, Rocket, Card, DineX Wallet (demo mode)
 
-## 🌟 Key Functional Highlights
+## Tech Stack
 
-1. **Student Verification & Identity Protection**:
-   - Official admission database verification integration.
-   - Student ID document review queue for university staff.
-   - Data privacy masking (`017****89`, `ra***@cou.ac.bd`) across public interfaces.
+| Layer | Technology |
+|-------|------------|
+| Frontend | Next.js 16, React 19, TypeScript |
+| Styling | Tailwind CSS v4, CSS Variables |
+| Database | PostgreSQL via Prisma ORM |
+| Auth | JWT (jose) + bcrypt, HTTP-only Cookies |
+| Icons | Lucide React |
+| Maps | Leaflet.js |
+| Push | Firebase Cloud Messaging |
 
-2. **Multi-Channel Campus Ordering**:
-   - **Cafeteria Pickup**: Order ahead with 4-digit counter pickup OTP verification.
-   - **Table QR Dining**: Dine-in order directly to tables.
-   - **Hall Delivery**: Couriers deliver to student residential halls (KNH, BSMRH, SDDH, NFCH, SHH).
-   - **Department Delivery**: Desk/classroom delivery across academic buildings.
+## Prerequisites
 
-3. **Kitchen Display System (KDS)**:
-   - Real-time order dispatch with audio chime alerts.
-   - Preparation timers, order ticket stages (`New` → `Preparing` → `Ready`).
-   - Automated stock depletion & instant sold-out triggers.
+- Node.js >= 18
+- PostgreSQL >= 14
+- npm or yarn
 
-4. **Campus Delivery Fleet & Logistics**:
-   - Real-time courier dispatch console.
-   - Configurable campus map showing exact university pickup and delivery points.
-   - **Zero Privacy Leakage**: Active GPS tracking automatically terminates immediately upon order completion.
+## Quick Start
 
-5. **Campus Innovation Layer (Phase 13)**:
-   - **Campus Food Radar**: Live dish availability and waiting times.
-   - **Smart Queue**: Queue depth estimates and suggested order times.
-   - **Group Ordering & Split Payments**: Share code rooms, individual subtotals, equal delivery fee splits.
-   - **Class Schedule Pre-Ordering**: Smart notifications aligned with student lecture routines.
-   - **Loyalty Rewards & Eco Score**: Green dining indicators and student point rewards.
-
-6. **Comprehensive 18-Section Admin Command Center (Phase 14)**:
-   - Overview, Students, Staff, Verifications, Menu, Categories, Orders, Kitchen, Delivery, Inventory, Payments, Reviews, Complaints, Rewards, Notifications, Analytics, Security, Settings.
-   - Direct database analytics charts (Order volumes, Revenue trend, Peak hours, Kitchen prep duration).
-   - Security audit stream tracking failed logins, suspicious IPs, and administrative interventions.
-   - One-click CSV exports for accounting and inventory stock audits.
-
----
-
-## 🏗️ Technology Stack
-
-- **Frontend**: Next.js 16 (App Router), React 19, TypeScript, Lucide Icons, Leaflet (Campus Map).
-- **Styling**: Tailored design tokens, Glassmorphism, Theme context (Dark / Light modes).
-- **Backend**: Next.js Server Components, API Route Handlers, Node.js.
-- **Database**: PostgreSQL with Prisma ORM 6.4.
-- **Authentication**: JWT session tokens signed with Jose, Bcrypt password hashing, HTTP-only secure cookies.
-- **Real-Time Push**: Firebase Cloud Messaging (Web Push & Device registration).
-
----
-
-## 🚀 Quick Start Guide
-
-### 1. Requirements
-- Node.js `20.x` or higher
-- PostgreSQL database
-
-### 2. Installation
 ```bash
-git clone https://github.com/nomanabdullah04/CoU-DineX.git
-cd CoU-DineX/cou-dinex
+# 1. Install dependencies
 npm install
-```
 
-### 3. Environment Setup
-```bash
-cp .env.production.example .env
-# Fill in your DATABASE_URL, JWT_SECRET, and Firebase credentials
-```
+# 2. Copy environment file
+cp .env.example .env.local
 
-### 4. Database Setup & Seed
-```bash
+# 3. Update DATABASE_URL in .env.local with your PostgreSQL connection string
+
+# 4. Generate Prisma Client
 npm run db:generate
-npm run db:push
-npm run db:seed
-```
 
-### 5. Start Development Server
-```bash
+# 5. Push schema to database
+npm run db:push
+
+# 6. Seed initial data (departments, halls, cafeteria, admin account)
+npm run db:seed
+
+# 7. Start development server
 npm run dev
 ```
-Open [http://localhost:3000](http://localhost:3000) in your browser.
 
----
+Visit `http://localhost:3000`
 
-## 🔑 Default Roles & Access Paths
+## Project Structure
 
-| Role | Accessible Portal | Default Credential Seed |
-| :--- | :--- | :--- |
-| **Student** | `/menu`, `/orders`, `/group-orders`, `/student/dashboard` | `01700000001` / `pass123` |
-| **Visitor** | `/menu`, `/explore`, `/orders` | Self-register via `/register` |
-| **Kitchen Staff** | `/kitchen` (KDS) | Seeded with role `CAFETERIA_STAFF` |
-| **Delivery Rider** | `/delivery` | Seeded with role `DELIVERY_AGENT` |
-| **Admin** | `/admin` (All 18 sections) | `01700000000` / `admin123` |
+```
+src/
+├── app/
+│   ├── (main)/          # Authenticated user pages (home, cart, orders, etc.)
+│   ├── admin/           # Admin dashboard
+│   ├── api/             # API routes
+│   │   ├── auth/        # Login, Register, Verify Email, Reset Password
+│   │   ├── orders/      # Order CRUD + status transitions
+│   │   ├── kitchen/     # Kitchen Display System API
+│   │   ├── delivery/    # Delivery agent actions
+│   │   ├── admin/       # Admin analytics, management
+│   │   ├── payments/    # Payment verification
+│   │   └── innovation/  # Radar, Smart Queue, Class Schedule
+│   ├── kitchen/         # Kitchen Display page
+│   ├── delivery/        # Delivery Agent portal
+│   ├── login/           # Login page
+│   └── register/        # Registration (Student/Visitor)
+├── components/
+│   ├── admin/           # Admin dashboard components
+│   ├── layout/          # AppShell, Header, Sidebar, BottomNav
+│   └── ui/              # Shared UI components
+├── contexts/            # CartContext, ThemeContext
+├── hooks/               # Custom hooks (useKitchenOrders)
+├── lib/
+│   ├── auth.ts          # JWT auth utilities
+│   ├── prisma.ts        # Prisma client singleton
+│   ├── rate-limit.ts    # API rate limiting
+│   ├── validations/     # Zod schemas
+│   └── notifications/   # Notification service
+├── middleware.ts         # Route protection & role-based access
+└── types/               # TypeScript type definitions
+```
 
----
+## User Roles
 
-## 🔒 Security & Privacy Commitments
-- **Zero Student Location Tracking**: Students are never tracked via continuous GPS.
-- **Delivery Tracking Boundary**: Delivery rider GPS coordinates are published only while status is `ON_THE_WAY` and immediately wiped once `DELIVERED`.
-- **Masked PII**: Phone numbers and personal emails are masked in administrative tables.
-- **Immutable Audit Logging**: Failed login attempts and administrative actions are permanently logged in `audit_logs`.
+| Role | Access |
+|------|--------|
+| STUDENT | Browse menu, order, track, rewards |
+| VISITOR | Browse menu, order, track |
+| CAFETERIA_STAFF | Kitchen Display, accept/prepare/ready orders |
+| DELIVERY_AGENT | Accept deliveries, pickup, OTP handover |
+| CAFETERIA_ADMIN | Full admin dashboard |
+| SUPER_ADMIN | Full admin + system settings |
 
----
+## Database
 
-## 📄 License
-Developed for Comilla University (CoU). All rights reserved.
+Schema uses Prisma ORM with 24 models. Key commands:
+
+```bash
+npm run db:generate    # Generate Prisma Client
+npm run db:push        # Push schema changes
+npm run db:migrate     # Run migrations (production)
+npm run db:seed        # Seed initial data
+npm run db:studio      # Open Prisma Studio
+```
+
+## Environment Variables
+
+See `.env.example` for development and `.env.production.example` for production configuration.
+
+**Required variables:**
+- `DATABASE_URL` — PostgreSQL connection string
+- `JWT_SECRET` — Secret key for JWT signing (generate: `openssl rand -base64 32`)
+
+## Deployment
+
+### Vercel (Recommended)
+
+1. Push to GitHub
+2. Import project in Vercel
+3. Set environment variables (DATABASE_URL, JWT_SECRET)
+4. Deploy
+
+### VPS / Docker
+
+```bash
+# Build
+npm run build
+
+# Start production server
+npm start
+```
+
+### Database Migration (Production)
+
+```bash
+npx prisma migrate deploy
+```
+
+## Security
+
+- JWT tokens in HTTP-only cookies (secure in production)
+- bcrypt password hashing (10 salt rounds)
+- Zod input validation on all API endpoints
+- Rate limiting on auth endpoints (10 req/15min per IP)
+- Role-based middleware protection
+- SQL injection protection via Prisma ORM
+- XSS protection via React auto-escaping
+- CSRF protection via SameSite=lax cookies
+- Audit logging for admin actions and login attempts
+
+## Backup Strategy
+
+- **Database**: Use `pg_dump` for regular PostgreSQL backups
+- **Schedule**: Daily automated backups recommended
+- **Retention**: Keep 7 daily + 4 weekly backups
+
+```bash
+# Manual backup
+pg_dump $DATABASE_URL > backup_$(date +%Y%m%d).sql
+
+# Restore
+psql $DATABASE_URL < backup_20261026.sql
+```
+
+## License
+
+Private — Comilla University

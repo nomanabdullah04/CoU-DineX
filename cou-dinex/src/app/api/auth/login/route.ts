@@ -2,11 +2,20 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { loginSchema } from "@/lib/validations/auth";
 import { verifyPassword, signSessionToken, AUTH_COOKIE_NAME } from "@/lib/auth";
-
+import { checkRateLimit, getClientIp, RATE_LIMITS } from "@/lib/rate-limit";
 import { AuditAction } from "@prisma/client";
 
 export async function POST(req: NextRequest) {
   try {
+    const clientIp = getClientIp(req);
+    const { allowed, remaining, resetIn } = checkRateLimit(`login:${clientIp}`, RATE_LIMITS.auth);
+    if (!allowed) {
+      return NextResponse.json(
+        { error: `Too many login attempts. Please try again in ${Math.ceil(resetIn / 60000)} minutes.` },
+        { status: 429, headers: { "Retry-After": String(Math.ceil(resetIn / 1000)) } }
+      );
+    }
+
     const ipAddress = req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || "127.0.0.1";
     const userAgent = req.headers.get("user-agent") || "unknown";
     const body = await req.json();

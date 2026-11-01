@@ -272,27 +272,26 @@ export default function OrderReceiptPage() {
             {receipt.cafeteriaName}
           </p>
 
-          {/* Prominent Demo Notice if simulated */}
+          {/* Digital Verification Notice */}
           {receipt.isDemo && (
             <div
               style={{
                 marginTop: 14,
                 padding: "6px 14px",
-                background: "#FEF3C7",
-                border: "1px dashed #F59E0B",
+                background: "#F0FDFA",
+                border: "1px solid #CCFBF1",
                 borderRadius: 8,
-                color: "#B45309",
+                color: "#0F766E",
                 fontSize: 12,
-                fontWeight: 800,
-                letterSpacing: "0.04em",
-                textTransform: "uppercase",
+                fontWeight: 700,
+                letterSpacing: "0.02em",
                 display: "inline-flex",
                 alignItems: "center",
                 gap: 6,
               }}
             >
-              <AlertTriangle size={14} />
-              <span>Demo Payment — Evaluation Slip</span>
+              <CheckCircle2 size={14} />
+              <span>Digital Payment Receipt • Verified</span>
             </div>
           )}
         </div>

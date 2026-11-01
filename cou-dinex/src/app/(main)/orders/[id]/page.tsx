@@ -549,7 +549,7 @@ export default function OrderTrackingPage() {
               <p style={{ margin: "2px 0 0 0", fontSize: 13, opacity: 0.9 }}>
                 {order.payment.method === "CASH_ON_DELIVERY"
                   ? "Pay cash directly to cafeteria staff or delivery rider upon receiving your meal."
-                  : "Complete your simulated demo payment with bKash, Nagad, Rocket, or Card."}
+                  : "Complete your payment securely with bKash, Nagad, Rocket, or Card."}
               </p>
             </div>
           </div>

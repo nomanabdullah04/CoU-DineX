@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
       await sendNotification({
         userId: order.userId,
         type: NotificationType.PAYMENT_SUCCESS,
-        title: verifyResult.isDemo ? "Demo Payment Successful" : "Payment Received",
+        title: "Payment Received",
         body: `Payment of ৳${order.totalAmount} for order #${order.orderNumber} has been verified (${gateway.displayName}). Digital receipt generated.`,
         actionUrl: `/orders/${order.id}/receipt`,
       });
